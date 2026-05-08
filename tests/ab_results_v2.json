@@ -1,0 +1,395 @@
+[
+  {
+    "id": "Q1",
+    "question": "华东区总共卖了多少钱？",
+    "category": "基础聚合+歧义",
+    "difficulty": "中",
+    "why_hard": "A组不知道sales_amount是'卖了多少钱'的对应字段，可能猜amount/revenue/total",
+    "a": {
+      "response": "根据用户问题，需要查询华东地区的总销售额。从可用数据来看，`orders` 表中有 `region` 和 `sales_amount` 字段，可以满足需求。\n\n```sql\nSELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东';\n```",
+      "sql": "SELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东';",
+      "exec_success": true,
+      "data": [
+        {
+          "total_sales_amount": 1512000.0
+        }
+      ],
+      "row_count": 1,
+      "error": "",
+      "score": 2
+    },
+    "b": {
+      "response": "```sql\nSELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东';\n```",
+      "sql": "SELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东';",
+      "exec_success": true,
+      "data": [
+        {
+          "total_sales_amount": 1512000.0
+        }
+      ],
+      "row_count": 1,
+      "error": "",
+      "score": 3
+    }
+  },
+  {
+    "id": "Q2",
+    "question": "哪个区的单子最多？",
+    "category": "口语化+聚合",
+    "difficulty": "中",
+    "why_hard": "'单子'='订单'，A组知道字段名但不知道region的枚举值",
+    "a": {
+      "response": "根据用户问题“哪个区的单子最多？”，需要统计每个区域的订单数量，并找出订单数量最多的区域。以下是SQL查询：\n\n```sql\nSELECT region, COUNT(*) AS order_count\nFROM orders\nGROUP BY region\nORDER BY order_count DESC\nLIMIT 1;\n```",
+      "sql": "SELECT region, COUNT(*) AS order_count\nFROM orders\nGROUP BY region\nORDER BY order_count DESC\nLIMIT 1;",
+      "exec_success": true,
+      "data": [
+        {
+          "region": "华东",
+          "order_count": 12.0
+        }
+      ],
+      "row_count": 1,
+      "error": "",
+      "score": 2
+    },
+    "b": {
+      "response": "根据用户问题“哪个区的单子最多？”，需要统计每个区域的订单数量，并找出订单数量最多的区域。以下是SQL查询：\n\n```sql\nSELECT region, COUNT(*) AS order_count\nFROM orders\nGROUP BY region\nORDER BY order_count DESC\nLIMIT 1;\n```",
+      "sql": "SELECT region, COUNT(*) AS order_count\nFROM orders\nGROUP BY region\nORDER BY order_count DESC\nLIMIT 1;",
+      "exec_success": true,
+      "data": [
+        {
+          "region": "华东",
+          "order_count": 12.0
+        }
+      ],
+      "row_count": 1,
+      "error": "",
+      "score": 3
+    }
+  },
+  {
+    "id": "Q3",
+    "question": "张三Q1完成了多少？离目标还差多少？",
+    "category": "跨表+计算",
+    "difficulty": "高",
+    "why_hard": "需要知道quarter字段格式是'2025Q1'而非'Q1'或'1'",
+    "a": {
+      "response": "根据用户问题，需要查询张三在Q1的完成情况。但“Q1”没有明确是哪一年，且“张三”可能出现在orders表的salesperson字段或targets表的salesperson字段。结合问题“离目标还差多少”，更可能是指targets表中的目标与实际完成情况。\n\n假设是2024年Q1，生成如下SQL：\n\n```sql\nSELECT \n    salesperson,\n    quarter,\n    target_amount,\n    actual_amount,\n    (target_amount - actual_amount) AS remaining_amount\nFROM targets\nWHERE salesperson = '张三'\n  AND quarter = '2024-Q1';\n```\n\n如果用户需要更精确的年份或季度格式，请提供具体信息。",
+      "sql": "SELECT \n    salesperson,\n    quarter,\n    target_amount,\n    actual_amount,\n    (target_amount - actual_amount) AS remaining_amount\nFROM targets\nWHERE salesperson = '张三'\n  AND quarter = '2024-Q1';",
+      "exec_success": true,
+      "data": [],
+      "row_count": 0,
+      "error": "",
+      "score": 1
+    },
+    "b": {
+      "response": "根据用户问题，需要查询张三在2025年Q1的实际完成金额和目标金额，并计算差额。由于targets表中quarter字段格式为\"2025Q1\"，且actual_amount可能为NULL（季度未结束），需要处理NULL情况。\n\n```sql\nSELECT \n    salesperson,\n    quarter,\n    target_amount,\n    COALESCE(actual_amount, 0) AS actual_amount,\n    target_amount - COALESCE(actual_amount, 0) AS remaining_amount\nFROM sales_dept.targets\nWHERE salesperson = '张三'\n  AND quarter = '2025Q1';\n```",
+      "sql": "SELECT \n    salesperson,\n    quarter,\n    target_amount,\n    COALESCE(actual_amount, 0) AS actual_amount,\n    target_amount - COALESCE(actual_amount, 0) AS remaining_amount\nFROM sales_dept.targets\nWHERE salesperson = '张三'\n  AND quarter = '2025Q1';",
+      "exec_success": true,
+      "data": [
+        {
+          "salesperson": "张三",
+          "quarter": "2025Q1",
+          "target_amount": 500000.0,
+          "actual_amount": 433000.0,
+          "remaining_amount": 67000.0
+        }
+      ],
+      "row_count": 1,
+      "error": "",
+      "score": 3
+    }
+  },
+  {
+    "id": "Q4",
+    "question": "上个季度各部门的费效比怎么样？",
+    "category": "业务术语歧义",
+    "difficulty": "高",
+    "why_hard": "'费效比'不是任何字段名，需要理解为cost_price/sales_amount或profit_margin",
+    "a": {
+      "response": "根据用户问题，需要计算上个季度各部门的费效比。费效比通常定义为成本/销售额，即 cost_price / sales_amount。但表中没有直接的成本字段，有 profit_margin（利润率），可以通过 sales_amount * (1 - profit_margin) 推算成本。或者如果用户期望的是目标表中的实际金额与目标金额的比值，但问题明确提到“各部门”，orders 表有 department 字段，targets 表也有 department 字段，但费效比更可能基于实际销售数据。\n\n假设费效比 = 成本 / 销售额，成本 = sales_amount * (1 - profit_margin)。上个季度需要根据当前日期推算。\n\n生成SQL：\n\n```sql\nSELECT \n    department,\n    SUM(sales_amount * (1 - profit_margin)) AS total_cost,\n    SUM(sales_amount) AS total_sales,\n    ROUND(SUM(sales_amount * (1 - profit_margin)) / SUM(sales_amount), 4) AS cost_effectiveness_ratio\nFROM orders\nWHERE sales_date >= DA",
+      "sql": "SELECT \n    department,\n    SUM(sales_amount * (1 - profit_margin)) AS total_cost,\n    SUM(sales_amount) AS total_sales,\n    ROUND(SUM(sales_amount * (1 - profit_margin)) / SUM(sales_amount), 4) AS cost_effectiveness_ratio\nFROM orders\nWHERE sales_date >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 3 MONTH)\n  AND sales_date < DATE_FORMAT(CURDATE(), '%Y-%m-01')\nGROUP BY department\nORDER BY department;",
+      "exec_success": true,
+      "data": [],
+      "row_count": 0,
+      "error": "",
+      "score": 1
+    },
+    "b": {
+      "response": "根据用户问题，需要计算“费效比”，通常指成本与销售额的比率。结合可用数据，orders表中有sales_amount（销售额）和cost_price（成本），可以按部门分组计算。用户提到“上个季度”，需要根据当前日期推断。假设当前日期为2025年，则上个季度为2025Q2（4-6月）。但为了通用性，SQL中应动态计算。\n\n由于数据量小且无时间函数限制，这里假设当前日期为2025年，上个季度为2025Q2。实际使用时可根据数据库调整。\n\nSQL如下：\n\n```sql\nSELECT \n    department,\n    SUM(cost_price) AS total_cost,\n    SUM(sales_amount) AS total_sales,\n    ROUND(SUM(cost_price) / SUM(sales_amount) * 100, 2) AS cost_sales_ratio_percent\nFROM orders\nWHERE sales_date >= '2025-04-01' AND sales_date < '2025-07-01'\nGROUP BY department\nORDER BY department;\n```",
+      "sql": "SELECT \n    department,\n    SUM(cost_price) AS total_cost,\n    SUM(sales_amount) AS total_sales,\n    ROUND(SUM(cost_price) / SUM(sales_amount) * 100, 2) AS cost_sales_ratio_percent\nFROM orders\nWHERE sales_date >= '2025-04-01' AND sales_date < '2025-07-01'\nGROUP BY department\nORDER BY department;",
+      "exec_success": true,
+      "data": [
+        {
+          "department": "销售一部",
+          "total_cost": 108000.0,
+          "total_sales": 154000.0,
+          "cost_sales_ratio_percent": 70.13
+        },
+        {
+          "department": "销售三部",
+          "total_cost": 257000.0,
+          "total_sales": 368000.0,
+          "cost_sales_ratio_percent": 69.84
+        },
+        {
+          "department": "销售二部",
+          "total_cost": 521000.0,
+          "total_sales": 745000.0,
+          "cost_sales_ratio_percent": 69.93
+        },
+        {
+          "department": "销售四部",
+          "total_cost": 461000.0,
+          "total_sales": 657000.0,
+          "cost_sales_ratio_percent": 70.17
+        }
+      ],
+      "row_count": 4,
+      "error": "",
+      "score": 3
+    }
+  },
+  {
+    "id": "Q5",
+    "question": "A级客户里，谁最近没下单了？",
+    "category": "跨表+逻辑推理",
+    "difficulty": "高",
+    "why_hard": "需要关联customers(level='A')和orders(MAX(sales_date))，找出最久没下单的",
+    "a": {
+      "response": "根据用户问题，需要找出“A级客户”中“最近没有下单”的客户。这里“最近没下单”可以理解为：客户是A级，但在最近一段时间内没有订单记录。由于没有明确指定“最近”的时间范围，我假设为“最近30天内”没有下单。\n\n```sql\nSELECT \n    c.cust_name,\n    c.contact_phone,\n    c.region,\n    c.create_date\nFROM customers c\nWHERE c.level = 'A'\n  AND c.cust_name NOT IN (\n      SELECT DISTINCT o.cust_name\n      FROM orders o\n      WHERE o.sales_date >= CURDATE() - INTERVAL 30 DAY\n  );\n```\n\n说明：\n- 从 `customers` 表中筛选出 `level = 'A'` 的客户。\n- 使用子查询找出最近30天内有订单的客户名称。\n- 主查询排除这些客户，得到“最近没下单”的A级客户。\n- 如果用户有更明确的时间范围（如“最近60天”、“最近一个季度”等），可以调整 `INTERVAL` 的值。",
+      "sql": "SELECT \n    c.cust_name,\n    c.contact_phone,\n    c.region,\n    c.create_date\nFROM customers c\nWHERE c.level = 'A'\n  AND c.cust_name NOT IN (\n      SELECT DISTINCT o.cust_name\n      FROM orders o\n      WHERE o.sales_date >= CURDATE() - INTERVAL 30 DAY\n  );",
+      "exec_success": true,
+      "data": [
+        {
+          "cust_name": "上海科技有限公司",
+          "contact_phone": "13812345678",
+          "region": "华东",
+          "create_date": "2023-01-10"
+        },
+        {
+          "cust_name": "北京贸易股份",
+          "contact_phone": "13987654321",
+          "region": "华北",
+          "create_date": "2023-02-15"
+        },
+        {
+          "cust_name": "杭州网络技术",
+          "contact_phone": "13833334444",
+          "region": "华东",
+          "create_date": "2023-05-30"
+        },
+        {
+          "cust_name": "武汉生物医药",
+          "contact_phone": "13655556666",
+          "region": "华北",
+          "create_date": "2023-07-20"
+        },
+        {
+          "cust_name": "天津重工业",
+          "contact_phone": "13877778888",
+          "region": "华北",
+          "create_date": "2023-09-30"
+        },
+        {
+          "cust_name": "重庆汽车零部件",
+          "contact_phone": "13622223344",
+          "region": "华西",
+          "create_date": "2023-12-25"
+        }
+      ],
+      "row_count": 6,
+      "error": "",
+      "score": 2
+    },
+    "b": {
+      "response": "根据您的问题，我需要先澄清一下“最近没下单”的具体含义。请问您希望查询的是：\n\n1. **从未下过单的A级客户**（在orders表中没有记录）？\n2. **最近一段时间内没有下单的A级客户**（比如最近30天、90天或某个具体时间段内没有订单）？\n\n如果是第2种情况，请明确“最近”的时间范围（例如：最近30天、最近90天、自某个日期以来等）。\n\n在您回复之前，我先假设您想查询“从未下过单的A级客户”，生成如下SQL：\n\n```sql\nSELECT \n    c.cust_id,\n    c.cust_name,\n    c.contact_phone,\n    c.region,\n    c.create_date\nFROM customers c\nWHERE c.level = 'A'\n  AND c.cust_name NOT IN (\n      SELECT DISTINCT cust_name \n      FROM orders\n  );\n```\n\n请确认您的具体需求，以便我调整查询。",
+      "sql": "SELECT \n    c.cust_id,\n    c.cust_name,\n    c.contact_phone,\n    c.region,\n    c.create_date\nFROM customers c\nWHERE c.level = 'A'\n  AND c.cust_name NOT IN (\n      SELECT DISTINCT cust_name \n      FROM orders\n  );",
+      "exec_success": true,
+      "data": [],
+      "row_count": 0,
+      "error": "",
+      "score": 1
+    }
+  },
+  {
+    "id": "Q6",
+    "question": "我想看看进行中的大单，超过20万的有哪些？",
+    "category": "多条件过滤",
+    "difficulty": "低",
+    "why_hard": "A组需要猜对status的枚举值'进行中'和sales_amount>200000",
+    "a": {
+      "response": "根据用户问题，需要查询订单表中状态为“进行中”且销售金额超过20万的订单。以下是SQL查询：\n\n```sql\nSELECT \n    order_id,\n    cust_name,\n    sales_amount,\n    cost_price,\n    profit_margin,\n    sales_date,\n    salesperson,\n    region,\n    department,\n    status,\n    phone,\n    id_card\nFROM orders\nWHERE status = '进行中'\n  AND sales_amount > 200000\nORDER BY sales_amount DESC;\n```\n\n该查询会返回所有状态为“进行中”且销售金额大于20万的订单记录，并按金额从高到低排序，方便查看大单情况。",
+      "sql": "SELECT \n    order_id,\n    cust_name,\n    sales_amount,\n    cost_price,\n    profit_margin,\n    sales_date,\n    salesperson,\n    region,\n    department,\n    status,\n    phone,\n    id_card\nFROM orders\nWHERE status = '进行中'\n  AND sales_amount > 200000\nORDER BY sales_amount DESC;",
+      "exec_success": true,
+      "data": [
+        {
+          "order_id": "ORD034",
+          "cust_name": "唐山钢铁",
+          "sales_amount": 289000.0,
+          "cost_price": 202000.0,
+          "profit_margin": 30.1,
+          "sales_date": "2025-04-08",
+          "salesperson": "李四",
+          "region": "华北",
+          "department": "销售二部",
+          "status": "进行中",
+          "phone": "13400444555",
+          "id_card": "130201199801024567"
+        },
+        {
+          "order_id": "ORD026",
+          "cust_name": "沈阳机械制造",
+          "sales_amount": 267000.0,
+          "cost_price": 187000.0,
+          "profit_margin": 29.96,
+          "sales_date": "2025-03-20",
+          "salesperson": "李四",
+          "region": "华北",
+          "department": "销售二部",
+          "status": "进行中",
+          "phone": "13555666777",
+          "id_card": "210101199005245678"
+        },
+        {
+          "order_id": "ORD030",
+          "cust_name": "哈尔滨制药",
+          "sales_amount": 234000.0,
+          "cost_price": 164000.0,
+          "profit_margin": 29.91,
+          "sales_date": "2025-03-30",
+          "salesperson": "李四",
+          "region": "华北",
+          "department": "销售二部",
+          "status": "进行中",
+          "phone": "13999000111",
+          "id_card": "230101199409289012"
+        }
+      ],
+      "row_count": 3,
+      "error": "",
+      "score": 2
+    },
+    "b": {
+      "response": "根据您的需求，需要查询订单状态为“进行中”且金额超过20万的订单。以下是SQL查询：\n\n```sql\nSELECT \n    order_id,\n    cust_name,\n    sales_amount,\n    sales_date,\n    salesperson,\n    region,\n    department,\n    status\nFROM orders\nWHERE status = '进行中'\n  AND sales_amount > 200000\nORDER BY sales_amount DESC;\n```\n\n该查询会返回所有状态为“进行中”、成交金额超过20万元的订单，并按金额从高到低排序，方便您查看大单情况。",
+      "sql": "SELECT \n    order_id,\n    cust_name,\n    sales_amount,\n    sales_date,\n    salesperson,\n    region,\n    department,\n    status\nFROM orders\nWHERE status = '进行中'\n  AND sales_amount > 200000\nORDER BY sales_amount DESC;",
+      "exec_success": true,
+      "data": [
+        {
+          "order_id": "ORD034",
+          "cust_name": "唐山钢铁",
+          "sales_amount": 289000.0,
+          "sales_date": "2025-04-08",
+          "salesperson": "李四",
+          "region": "华北",
+          "department": "销售二部",
+          "status": "进行中"
+        },
+        {
+          "order_id": "ORD026",
+          "cust_name": "沈阳机械制造",
+          "sales_amount": 267000.0,
+          "sales_date": "2025-03-20",
+          "salesperson": "李四",
+          "region": "华北",
+          "department": "销售二部",
+          "status": "进行中"
+        },
+        {
+          "order_id": "ORD030",
+          "cust_name": "哈尔滨制药",
+          "sales_amount": 234000.0,
+          "sales_date": "2025-03-30",
+          "salesperson": "李四",
+          "region": "华北",
+          "department": "销售二部",
+          "status": "进行中"
+        }
+      ],
+      "row_count": 3,
+      "error": "",
+      "score": 3
+    }
+  },
+  {
+    "id": "Q7",
+    "question": "把华东区客户的手机号给我",
+    "category": "数据脱敏验证",
+    "difficulty": "低",
+    "why_hard": "B组应返回脱敏数据(138****5678)，A组返回明文",
+    "a": {
+      "response": "```sql\nSELECT c.cust_name, c.contact_phone\nFROM customers c\nWHERE c.region = '华东区';\n```",
+      "sql": "SELECT c.cust_name, c.contact_phone\nFROM customers c\nWHERE c.region = '华东区';",
+      "exec_success": true,
+      "data": [],
+      "row_count": 0,
+      "error": "",
+      "score": 1
+    },
+    "b": {
+      "response": "根据您的需求，需要从orders表中查询华东区客户的手机号。以下是SQL查询：\n\n```sql\nSELECT phone\nFROM orders\nWHERE region = '华东';\n```\n\n注意：该查询会返回所有华东区订单对应的客户手机号。如果同一个客户有多个订单，手机号可能会重复。如果需要去重，可以使用`SELECT DISTINCT phone`。",
+      "sql": "SELECT phone\nFROM orders\nWHERE region = '华东';",
+      "exec_success": true,
+      "data": [
+        {
+          "phone": "138****5678"
+        },
+        {
+          "phone": "137****3333"
+        },
+        {
+          "phone": "138****4444"
+        },
+        {
+          "phone": "137****7777"
+        },
+        {
+          "phone": "138****5678"
+        },
+        {
+          "phone": "135****2233"
+        },
+        {
+          "phone": "139****6677"
+        },
+        {
+          "phone": "138****5678"
+        },
+        {
+          "phone": "134****5666"
+        },
+        {
+          "phone": "138****9000"
+        }
+      ],
+      "row_count": 12,
+      "error": "",
+      "score": 3
+    }
+  },
+  {
+    "id": "Q8",
+    "question": "我们部门的利润情况怎么样？",
+    "category": "权限隔离",
+    "difficulty": "中",
+    "why_hard": "以sales_staff身份查询，B组schema中无profit/cost字段",
+    "a": {
+      "response": "根据您的问题，我需要先澄清一下：您提到的“我们部门”具体是指哪个部门？从数据表中可以看到 `department` 字段，但您没有指定具体的部门名称。\n\n如果您能提供部门名称，我可以生成对应的SQL查询。例如，如果部门是“销售部”，查询可以这样写：\n\n```sql\nSELECT \n    department,\n    SUM(sales_amount) AS 总销售额,\n    SUM(cost_price) AS 总成本,\n    SUM(profit_margin) AS 总利润,\n    AVG(profit_margin) AS 平均利润率\nFROM orders\nWHERE department = '销售部'\nGROUP BY department;\n```\n\n请告诉我您关心的具体部门名称，以便我生成准确的查询。",
+      "sql": "SELECT \n    department,\n    SUM(sales_amount) AS 总销售额,\n    SUM(cost_price) AS 总成本,\n    SUM(profit_margin) AS 总利润,\n    AVG(profit_margin) AS 平均利润率\nFROM orders\nWHERE department = '销售部'\nGROUP BY department;",
+      "exec_success": true,
+      "data": [],
+      "row_count": 0,
+      "error": "",
+      "score": 1
+    },
+    "b": {
+      "response": "根据您的问题，我注意到您想查询“利润情况”，但根据可用数据schema的说明，**成本和利润字段对当前用户不可见**。因此，我无法从现有数据中直接获取利润信息。\n\n如果您能提供以下信息，我可以帮您生成更合适的查询：\n1. 您所在的部门名称是什么？\n2. 是否有其他可以计算利润的字段（如成本、折扣等）？或者您是否希望用订单成交金额（sales_amount）来近似分析？\n\n目前，我只能查询到订单的成交金额，无法计算利润。请确认您的需求。",
+      "sql": null,
+      "exec_success": false,
+      "data": [],
+      "row_count": 0,
+      "error": "无SQL",
+      "score": 0
+    }
+  }
+]
