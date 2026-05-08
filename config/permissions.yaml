@@ -9,22 +9,31 @@ roles:
 
   - id: sales_staff
     name: 销售员工
-    allowed_databases: [demo_db]
+    allowed_databases: [sales_db]
     allowed_tables:
-      demo_db: [orders, customers]
+      sales_db: [orders, customers]
     denied_columns:
-      demo_db.orders: [cost_price, profit_margin]
+      sales_db.orders: [cost_price, profit_margin]
     row_filter:
-      demo_db.orders: "region = '{user.region}'"
+      sales_db.orders: "region = '{user.region}'"
 
   - id: sales_manager
     name: 销售经理
-    allowed_databases: [demo_db]
+    allowed_databases: [sales_db]
     allowed_tables:
-      demo_db: [orders, customers]
+      sales_db: [orders, customers, targets]
     denied_columns: {}
     row_filter:
-      demo_db.orders: "department = '{user.department}'"
+      sales_db.orders: "department = '{user.department}'"
+
+  - id: finance_staff
+    name: 财务员工
+    allowed_databases: [finance_db, sales_db]
+    allowed_tables:
+      finance_db: [invoices, expenses]
+      sales_db: [orders]
+    denied_columns: {}
+    row_filter: {}
 
 users:
   - id: admin
@@ -41,6 +50,18 @@ users:
 
   - id: lisi
     name: 李四
+    role: sales_staff
+    attrs:
+      region: 华北
+      department: 销售二部
+
+  - id: wangwu
+    name: 王五
     role: sales_manager
     attrs:
-      department: 销售一部
+      department: 销售三部
+
+  - id: finance_zhao
+    name: 赵会计
+    role: finance_staff
+    attrs: {}

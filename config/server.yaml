@@ -1,13 +1,12 @@
 server:
   host: 0.0.0.0
   port: 8080
-  jwt_secret: ${JWT_SECRET}
+  jwt_secret: kaiwu-test-secret-2025
   metadata_db: ./data/metadata.db
 
 llm:
-  # 默认使用本地Ollama，也支持任意OpenAI兼容接口
-  base_url: ${LLM_BASE_URL}
-  api_key: ${LLM_API_KEY}
-  model: ${LLM_MODEL}
+  base_url: https://api.deepseek.com/v1
+  api_key: sk-1ec7d30e0b9648e19cfdb33aa5dfcc64
+  model: deepseek-chat
   temperature: 0.1
   max_tokens: 2048

@@ -1,0 +1,263 @@
+[
+  {
+    "id": "Q1",
+    "question": "华东区的总销售额是多少？",
+    "category": "基础聚合",
+    "group_a": {
+      "group": "A",
+      "sql": "-- 查看所有表的结构\nDESCRIBE orders;\nDESCRIBE customers;\nDESCRIBE targets;",
+      "exec_success": false,
+      "data": [],
+      "row_count": 0,
+      "error": "(1064, \"You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'DESCRIBE customers;\\nDESCRIBE targets' at line 3\")"
+    },
+    "group_b": {
+      "group": "B",
+      "sql": "SELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东';",
+      "exec_success": true,
+      "data": [
+        {
+          "total_sales_amount": 1512000.0
+        }
+      ],
+      "row_count": 1,
+      "error": ""
+    }
+  },
+  {
+    "id": "Q2",
+    "question": "各区域的订单数量是多少？按数量从多到少排列",
+    "category": "分组排序",
+    "group_a": {
+      "group": "A",
+      "sql": "SELECT region, COUNT(*) AS order_count\nFROM orders\nGROUP BY region\nORDER BY order_count DESC;",
+      "exec_success": true,
+      "data": [
+        {
+          "region": "华东",
+          "order_count": 12.0
+        },
+        {
+          "region": "华北",
+          "order_count": 11.0
+        },
+        {
+          "region": "华南",
+          "order_count": 9.0
+        },
+        {
+          "region": "华西",
+          "order_count": 8.0
+        }
+      ],
+      "row_count": 4,
+      "error": ""
+    },
+    "group_b": {
+      "group": "B",
+      "sql": "SELECT \n    region,\n    COUNT(order_id) AS order_count\nFROM orders\nGROUP BY region\nORDER BY order_count DESC;",
+      "exec_success": true,
+      "data": [
+        {
+          "region": "华东",
+          "order_count": 12.0
+        },
+        {
+          "region": "华北",
+          "order_count": 11.0
+        },
+        {
+          "region": "华南",
+          "order_count": 9.0
+        },
+        {
+          "region": "华西",
+          "order_count": 8.0
+        }
+      ],
+      "row_count": 4,
+      "error": ""
+    }
+  },
+  {
+    "id": "Q3",
+    "question": "张三2025年第一季度的销售目标完成率是多少？",
+    "category": "跨表关联",
+    "group_a": {
+      "group": "A",
+      "sql": "-- 查看表结构\nDESCRIBE customers;\nDESCRIBE targets;\nDESCRIBE orders;",
+      "exec_success": false,
+      "data": [],
+      "row_count": 0,
+      "error": "(1064, \"You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'DESCRIBE targets;\\nDESCRIBE orders' at line 3\")"
+    },
+    "group_b": {
+      "group": "B",
+      "sql": "SELECT \n    salesperson,\n    quarter,\n    target_amount,\n    actual_amount,\n    CASE \n        WHEN target_amount IS NULL OR target_amount = 0 THEN NULL\n        ELSE ROUND(actual_amount / target_amount * 100, 2)\n    END AS completion_rate_percent\nFROM sales_dept.targets\nWHERE salesperson = '张三'\n  AND quarter = '2025Q1';",
+      "exec_success": true,
+      "data": [
+        {
+          "salesperson": "张三",
+          "quarter": "2025Q1",
+          "target_amount": 500000.0,
+          "actual_amount": 433000.0,
+          "completion_rate_percent": 86.6
+        }
+      ],
+      "row_count": 1,
+      "error": ""
+    }
+  },
+  {
+    "id": "Q4",
+    "question": "我们部门上个月的利润率是多少？",
+    "category": "权限隔离",
+    "group_a": {
+      "group": "A",
+      "sql": "-- 先查看 orders 表的字段结构\nSHOW COLUMNS FROM orders;",
+      "exec_success": true,
+      "data": [
+        {
+          "Field": "order_id",
+          "Type": "varchar(20)",
+          "Null": "NO",
+          "Key": "PRI",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "cust_name",
+          "Type": "varchar(100)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "sales_amount",
+          "Type": "decimal(12,2)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "cost_price",
+          "Type": "decimal(12,2)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "profit_margin",
+          "Type": "decimal(5,2)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "sales_date",
+          "Type": "date",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "salesperson",
+          "Type": "varchar(50)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "region",
+          "Type": "varchar(20)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "department",
+          "Type": "varchar(50)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "status",
+          "Type": "varchar(20)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "phone",
+          "Type": "varchar(20)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        },
+        {
+          "Field": "id_card",
+          "Type": "varchar(20)",
+          "Null": "YES",
+          "Key": "",
+          "Default": null,
+          "Extra": ""
+        }
+      ],
+      "row_count": 12,
+      "error": ""
+    },
+    "group_b": {
+      "group": "B",
+      "sql": null,
+      "exec_success": false,
+      "data": [],
+      "row_count": 0,
+      "error": "无SQL生成"
+    }
+  },
+  {
+    "id": "Q5",
+    "question": "华东区销售额最高的3个订单，客户名称和联系电话是什么？",
+    "category": "数据脱敏",
+    "group_a": {
+      "group": "A",
+      "sql": "-- 先查看表结构\nDESCRIBE orders;\nDESCRIBE customers;",
+      "exec_success": false,
+      "data": [],
+      "row_count": 0,
+      "error": "(1064, \"You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'DESCRIBE customers' at line 3\")"
+    },
+    "group_b": {
+      "group": "B",
+      "sql": "SELECT cust_name, phone\nFROM orders\nWHERE region = '华东'\nORDER BY sales_amount DESC\nLIMIT 3;",
+      "exec_success": true,
+      "data": [
+        {
+          "cust_name": "杭州网络技术",
+          "phone": "138****4444"
+        },
+        {
+          "cust_name": "上海科技有限公司",
+          "phone": "138****5678"
+        },
+        {
+          "cust_name": "无锡半导体",
+          "phone": "134****5666"
+        }
+      ],
+      "row_count": 3,
+      "error": ""
+    }
+  }
+]

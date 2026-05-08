@@ -41,14 +41,19 @@ class SQLValidator:
                         "TRUNCATE", "EXEC", "EXECUTE", "GRANT", "REVOKE", "MERGE"}
 
     # 可疑模式：UNION注入、子查询信息泄露等
+    # UNION检测：先去除SQL注释再匹配，覆盖所有注释绕过变体
     _SUSPICIOUS_PATTERNS = [
-        re.compile(r"\bUNION\s+(ALL\s+)?SELECT\b", re.IGNORECASE),  # UNION注入
+        re.compile(r"\bUNION\s+(ALL\s+)?SELECT\b", re.IGNORECASE),  # UNION注入（去注释后匹配）
         re.compile(r"\bINTO\s+OUTFILE\b", re.IGNORECASE),           # 文件写入
+        re.compile(r"\bINTO\s+DUMPFILE\b", re.IGNORECASE),          # 文件写入
         re.compile(r"\bLOAD_FILE\b", re.IGNORECASE),                # 文件读取
         re.compile(r"\bINFORMATION_SCHEMA\b", re.IGNORECASE),       # 元数据探测
         re.compile(r"\bSLEEP\s*\(", re.IGNORECASE),                 # 时间盲注
         re.compile(r"\bBENCHMARK\s*\(", re.IGNORECASE),             # 时间盲注
     ]
+
+    # 去除SQL注释的正则：匹配 /* ... */ 块注释和 -- 行注释
+    _COMMENT_PATTERN = re.compile(r"/\*.*?\*/|--[^\n]*", re.DOTALL)
 
     def validate(self, sql: str) -> tuple[bool, str]:
         """验证SQL安全性
@@ -81,9 +86,10 @@ class SQLValidator:
                 if upper_token not in ("SELECT", "WITH"):
                     return False, f"只允许SELECT/WITH查询，检测到: {upper_token}"
 
-        # 检查可疑模式
+        # 检查可疑模式（先去除注释再匹配，防止注释绕过）
+        sql_no_comments = self._COMMENT_PATTERN.sub(" ", sql)
         for pattern in self._SUSPICIOUS_PATTERNS:
-            if pattern.search(sql):
+            if pattern.search(sql_no_comments):
                 return False, f"检测到可疑SQL模式: {pattern.pattern}"
 
         return True, ""
@@ -127,9 +133,15 @@ class SQLValidator:
         return tables
 
     def _extract_tables_from_statement(self, statement, tables: set):
-        """递归提取语句中的表名"""
+        """递归提取语句中的表名（包括子查询中的表）"""
         from_seen = False
         for token in statement.tokens:
+            # 递归处理子查询和括号内的内容
+            if hasattr(token, 'tokens'):
+                # Parenthesis（括号）或Subquery中可能包含子查询
+                if not isinstance(token, (IdentifierList, Identifier)):
+                    self._extract_tables_from_statement(token, tables)
+
             if token.ttype is Keyword and token.normalized.upper() in ("FROM", "JOIN", "INNER JOIN",
                                                                         "LEFT JOIN", "RIGHT JOIN",
                                                                         "FULL JOIN", "CROSS JOIN"):
@@ -142,11 +154,17 @@ class SQLValidator:
                         name = self._get_table_name(identifier)
                         if name:
                             tables.add(name)
+                        # 递归检查identifier内部的子查询
+                        if hasattr(identifier, 'tokens'):
+                            self._extract_tables_from_statement(identifier, tables)
                     from_seen = False
                 elif isinstance(token, Identifier):
                     name = self._get_table_name(token)
                     if name:
                         tables.add(name)
+                    # 递归检查identifier内部的子查询
+                    if hasattr(token, 'tokens'):
+                        self._extract_tables_from_statement(token, tables)
                     from_seen = False
                 elif token.ttype is not sqlparse.tokens.Whitespace:
                     from_seen = False
