@@ -29,6 +29,7 @@ from .models import (
 )
 from .permissions import PermissionEngine
 from .prompts import QUERY_CONTEXT_TEMPLATE, RESULT_INTERPRETATION_PROMPT, SQL_GENERATION_SYSTEM
+from .mappings import MappingStore
 from .security import AuditLogger, RateLimiter
 
 # SQL代码块提取：优先匹配```sql代码块，其次匹配裸SELECT语句
@@ -80,6 +81,11 @@ def create_app(config: AppConfig) -> FastAPI:
     app.state.executor = executor
     app.state.audit_logger = audit_logger
     app.state.rate_limiter = rate_limiter
+    app.state.mapping_store = MappingStore(config.server.metadata_db)
+
+    # 挂载管理后台路由
+    from .admin import router as admin_router
+    app.include_router(admin_router)
 
     @app.get("/health")
     async def health():

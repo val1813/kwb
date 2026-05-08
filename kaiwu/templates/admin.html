@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开物数据中间层 · 管理后台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f5f5f5; min-width: 1024px; }
+.layout { display: flex; min-height: 100vh; }
+/* 左侧导航 */
+.sidebar { width: 220px; background: #001529; color: #fff; position: fixed; height: 100vh; overflow-y: auto; }
+.sidebar h2 { padding: 20px 16px; font-size: 16px; border-bottom: 1px solid #0d2b45; }
+.sidebar ul { list-style: none; }
+.sidebar li { padding: 12px 24px; cursor: pointer; transition: background .2s; font-size: 14px; }
+.sidebar li:hover { background: #0d2b45; }
+.sidebar li.active { background: #1890ff; }
+/* 右侧内容 */
+.main { margin-left: 220px; flex: 1; }
+.header { background: #fff; padding: 16px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); position: sticky; top: 0; z-index: 10; }
+.header h1 { font-size: 18px; color: #333; }
+.content { padding: 24px; }
+.section { display: none; }
+.section.active { display: block; }
+/* 卡片 */
+.card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 20px; margin-bottom: 16px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 24px; text-align: center; }
+.stat-card .num { font-size: 32px; font-weight: bold; color: #1890ff; }
+.stat-card .label { font-size: 14px; color: #666; margin-top: 8px; }
+/* 表格 */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { background: #fafafa; text-align: left; padding: 12px; border-bottom: 2px solid #eee; color: #333; }
+td { padding: 12px; border-bottom: 1px solid #f0f0f0; color: #555; }
+tr:nth-child(even) { background: #fafafa; }
+tr:hover { background: #e6f7ff; }
+/* 按钮 */
+.btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: opacity .2s; }
+.btn:hover { opacity: .85; }
+.btn-primary { background: #1890ff; color: #fff; }
+.btn-danger { background: #ff4d4f; color: #fff; }
+.btn-default { background: #f0f0f0; color: #333; }
+.btn-success { background: #52c41a; color: #fff; }
+/* 状态标签 */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.tag-green { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+.tag-red { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+.tag-blue { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+.tag-orange { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
+/* 标签页 */
+.tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #f0f0f0; }
+.tab { padding: 10px 20px; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab.active { color: #1890ff; border-bottom-color: #1890ff; }
+/* 弹窗 */
+.modal-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; justify-content: center; align-items: center; }
+.modal-mask.show { display: flex; }
+.modal { background: #fff; border-radius: 8px; padding: 24px; width: 480px; max-height: 80vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 16px; }
+.modal label { display: block; margin-bottom: 4px; font-size: 13px; color: #333; }
+.modal input, .modal textarea { width: 100%; padding: 8px; border: 1px solid #d9d9d9; border-radius: 4px; margin-bottom: 12px; font-size: 14px; }
+.modal textarea { height: 60px; resize: vertical; }
+.modal-actions { text-align: right; margin-top: 12px; }
+.modal-actions .btn { margin-left: 8px; }
+/* 筛选 */
+.filter-bar { margin-bottom: 16px; display: flex; gap: 12px; align-items: center; }
+.filter-bar select { padding: 6px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <h2>开物数据中间层</h2>
+    <ul id="nav">
+      <li class="active" data-page="overview">系统概览</li>
+      <li data-page="databases">数据库管理</li>
+      <li data-page="cards">语义名片</li>
+      <li data-page="mappings">映射管理</li>
+      <li data-page="permissions">权限配置</li>
+      <li data-page="logs">查询日志</li>
+    </ul>
+  </nav>
+  <div class="main">
+    <div class="header"><h1>开物数据中间层 · 管理后台</h1></div>
+    <div class="content">
+      <!-- 系统概览 -->
+      <div class="section active" id="page-overview">
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="card"><h3 style="margin-bottom:12px">最近安全事件</h3><table><thead><tr><th>时间</th><th>类型</th><th>用户</th><th>详情</th></tr></thead><tbody id="events-body"></tbody></table></div>
+      </div>
+      <!-- 数据库管理 -->
+      <div class="section" id="page-databases">
+        <div class="card"><table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th>操作</th></tr></thead><tbody id="db-body"></tbody></table></div>
+      </div>
+      <!-- 语义名片 -->
+      <div class="section" id="page-cards">
+        <div class="filter-bar"><label>筛选：</label><select id="card-filter"><option value="">全部</option></select></div>
+        <div class="card"><table><thead><tr><th>字段ID</th><th>业务名称</th><th>描述</th><th>分类</th><th>单位</th><th>置信度</th><th>状态</th><th>操作</th></tr></thead><tbody id="cards-body"></tbody></table></div>
+      </div>
+      <!-- 映射管理 -->
+      <div class="section" id="page-mappings">
+        <div class="tabs"><span class="tab active" data-status="pending">待审核</span><span class="tab" data-status="confirmed">已确认</span><span class="tab" data-status="rejected">已拒绝</span></div>
+        <div class="card"><table><thead><tr><th>ID</th><th>字段A</th><th>字段B</th><th>置信度</th><th>方法</th><th>状态</th><th>操作</th></tr></thead><tbody id="mappings-body"></tbody></table></div>
+      </div>
+      <!-- 权限配置 -->
+      <div class="section" id="page-permissions">
+        <div class="card"><h3 style="margin-bottom:12px">角色列表</h3><table><thead><tr><th>ID</th><th>名称</th><th>可访问数据库</th></tr></thead><tbody id="roles-body"></tbody></table></div>
+        <div class="card"><h3 style="margin-bottom:12px">用户列表</h3><table><thead><tr><th>ID</th><th>名称</th><th>角色</th><th>属性</th></tr></thead><tbody id="users-body"></tbody></table></div>
+      </div>
+      <!-- 查询日志 -->
+      <div class="section" id="page-logs">
+        <div class="tabs" id="log-tabs"><span class="tab active" data-log="queries">查询日志</span><span class="tab" data-log="security">安全事件</span></div>
+        <div class="card"><table><thead id="log-thead"></thead><tbody id="log-body"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 编辑弹窗 -->
+<div class="modal-mask" id="edit-modal">
+  <div class="modal">
+    <h3>编辑语义名片</h3>
+    <input type="hidden" id="edit-field-id">
+    <label>业务名称</label><input id="edit-name">
+    <label>描述</label><textarea id="edit-desc"></textarea>
+    <label>分类</label><input id="edit-category">
+    <label>单位</label><input id="edit-unit">
+    <label>备注</label><input id="edit-notes">
+    <div class="modal-actions"><button class="btn btn-default" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveCard()">保存</button></div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+// 导航切换
+$('#nav').addEventListener('click', e => {
+  const li = e.target.closest('li');
+  if (!li) return;
+  $$('#nav li').forEach(l => l.classList.remove('active'));
+  li.classList.add('active');
+  $$('.section').forEach(s => s.classList.remove('active'));
+  $(`#page-${li.dataset.page}`).classList.add('active');
+  loadPage(li.dataset.page);
+});
+// API调用
+async function api(url, opts) {
+  const res = await fetch('/admin/api' + url, opts);
+  return res.json();
+}
+// 加载页面数据
+function loadPage(page) {
+  const loaders = { overview: loadOverview, databases: loadDatabases, cards: loadCards, mappings: loadMappings, permissions: loadPermissions, logs: loadLogs };
+  if (loaders[page]) loaders[page]();
+}
+async function loadOverview() {
+  const stats = await api('/stats');
+  const items = [
+    { num: stats.tables, label: '已扫描表' },
+    { num: stats.cards, label: '语义名片' },
+    { num: stats.mappings, label: '映射关系' },
+    { num: stats.queries_today, label: '今日查询' }
+  ];
+  $('#stats-grid').innerHTML = items.map(i => `<div class="stat-card"><div class="num">${i.num}</div><div class="label">${i.label}</div></div>`).join('');
+  const events = await api('/security-events');
+  $('#events-body').innerHTML = events.slice(0, 5).map(e => `<tr><td>${e.timestamp}</td><td>${e.event_type}</td><td>${e.user_id}</td><td>${e.detail}</td></tr>`).join('');
+}
+async function loadDatabases() {
+  const dbs = await api('/databases');
+  $('#db-body').innerHTML = dbs.map(d => `<tr><td>${d.id}</td><td>${d.name}</td><td>${d.type}</td><td><span class="tag ${d.connected ? 'tag-green' : 'tag-red'}">${d.connected ? '已连接' : '断开'}</span></td><td><button class="btn btn-primary" onclick="scanDb('${d.id}')">重新扫描</button></td></tr>`).join('');
+}
+async function scanDb(id) {
+  const r = await api(`/databases/${id}/scan`, { method: 'POST' });
+  alert(r.success ? `扫描完成，共${r.tables_count}张表` : '扫描失败');
+  loadDatabases();
+}
+let allCards = [];
+async function loadCards() {
+  allCards = await api('/cards');
+  renderCards(allCards);
+}
+function renderCards(cards) {
+  $('#cards-body').innerHTML = cards.map(c => `<tr><td>${c.field_id}</td><td>${c.business_name}</td><td>${c.description || '-'}</td><td>${c.category || '-'}</td><td>${c.unit || '-'}</td><td>${(c.confidence * 100).toFixed(0)}%</td><td><span class="tag ${c.verified ? 'tag-green' : 'tag-orange'}">${c.verified ? '已审核' : '待审核'}</span></td><td><button class="btn btn-default" onclick="editCard('${c.field_id}')">编辑</button> <button class="btn btn-success" onclick="verifyCard('${c.field_id}')">审核</button></td></tr>`).join('');
+}
+$('#card-filter').addEventListener('change', e => {
+  const v = e.target.value;
+  renderCards(v ? allCards.filter(c => c.field_id.startsWith(v)) : allCards);
+});
+function editCard(fid) {
+  const c = allCards.find(x => x.field_id === fid);
+  if (!c) return;
+  $('#edit-field-id').value = fid;
+  $('#edit-name').value = c.business_name || '';
+  $('#edit-desc').value = c.description || '';
+  $('#edit-category').value = c.category || '';
+  $('#edit-unit').value = c.unit || '';
+  $('#edit-notes').value = c.notes || '';
+  $('#edit-modal').classList.add('show');
+}
+function closeModal() { $('#edit-modal').classList.remove('show'); }
+async function saveCard() {
+  const fid = $('#edit-field-id').value;
+  await api(`/cards/${fid}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ business_name: $('#edit-name').value, description: $('#edit-desc').value, category: $('#edit-category').value, unit: $('#edit-unit').value, notes: $('#edit-notes').value }) });
+  closeModal();
+  loadCards();
+}
+async function verifyCard(fid) {
+  await api(`/cards/${fid}/verify`, { method: 'POST' });
+  loadCards();
+}
+let mappingStatus = 'pending';
+async function loadMappings() {
+  const data = await api(`/mappings?status=${mappingStatus}`);
+  $('#mappings-body').innerHTML = data.map(m => `<tr><td>${m.id}</td><td>${m.field_a_id}</td><td>${m.field_b_id}</td><td>${(m.confidence * 100).toFixed(0)}%</td><td>${m.method}</td><td><span class="tag tag-blue">${m.status}</span></td><td>${mappingStatus === 'pending' ? `<button class="btn btn-success" onclick="confirmMapping('${m.id}')">确认</button> <button class="btn btn-danger" onclick="rejectMapping('${m.id}')">拒绝</button>` : '-'}</td></tr>`).join('');
+}
+$$('#page-mappings .tab').forEach(t => t.addEventListener('click', e => {
+  $$('#page-mappings .tab').forEach(x => x.classList.remove('active'));
+  e.target.classList.add('active');
+  mappingStatus = e.target.dataset.status;
+  loadMappings();
+}));
+async function confirmMapping(id) { await api(`/mappings/${id}/confirm`, { method: 'POST' }); loadMappings(); }
+async function rejectMapping(id) { await api(`/mappings/${id}/reject`, { method: 'POST' }); loadMappings(); }
+async function loadPermissions() {
+  const [roles, users] = await Promise.all([api('/roles'), api('/users')]);
+  $('#roles-body').innerHTML = roles.map(r => `<tr><td>${r.id}</td><td>${r.name}</td><td>${(r.allowed_databases || []).join(', ')}</td></tr>`).join('');
+  $('#users-body').innerHTML = users.map(u => `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.role}</td><td>${JSON.stringify(u.attrs || {})}</td></tr>`).join('');
+}
+let logTab = 'queries';
+async function loadLogs() { logTab === 'queries' ? loadQueryLogs() : loadSecurityLogs(); }
+async function loadQueryLogs() {
+  $('#log-thead').innerHTML = '<tr><th>时间</th><th>用户</th><th>问题</th><th>SQL</th><th>状态</th></tr>';
+  const logs = await api('/logs');
+  $('#log-body').innerHTML = logs.map(l => `<tr><td>${l.timestamp}</td><td>${l.user_id}</td><td>${l.question}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.generated_sql||'').replace(/"/g,'&quot;')}">${l.generated_sql || '-'}</td><td><span class="tag ${l.success ? 'tag-green' : 'tag-red'}">${l.success ? '成功' : '失败'}</span></td></tr>`).join('');
+}
+async function loadSecurityLogs() {
+  $('#log-thead').innerHTML = '<tr><th>时间</th><th>类型</th><th>用户</th><th>详情</th></tr>';
+  const events = await api('/security-events');
+  $('#log-body').innerHTML = events.map(e => `<tr><td>${e.timestamp}</td><td>${e.event_type}</td><td>${e.user_id}</td><td>${e.detail}</td></tr>`).join('');
+}
+$$('#log-tabs .tab').forEach(t => t.addEventListener('click', e => {
+  $$('#log-tabs .tab').forEach(x => x.classList.remove('active'));
+  e.target.classList.add('active');
+  logTab = e.target.dataset.log;
+  loadLogs();
+}));
+// 初始加载
+loadOverview();
+</script>
+</body>
+</html>

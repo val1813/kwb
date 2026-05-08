@@ -12,7 +12,7 @@
 ```
 企业数据库（任意类型、任意质量）
         ↓
-\\\[开物中间层]
+\\\\\\\[开物中间层]
   - 接入适配：统一连接各类数据库
   - 语义治理：自动识别字段含义、跨库冲突归一
   - 权限控制：字段级、行级权限，JWT强制执行
@@ -72,7 +72,7 @@
 |MySQL|SQLAlchemy|`pymysql`|
 |PostgreSQL|SQLAlchemy|`psycopg2`|
 |SQL Server|SQLAlchemy|`pyodbc`|
-|Oracle|SQLAlchemy|`cx\\\_Oracle`|
+|Oracle|SQLAlchemy|`cx\\\\\\\_Oracle`|
 |SQLite|SQLAlchemy|内置|
 |MongoDB|直连|`pymongo`|
 |达梦DM|SQLAlchemy|`dmPython`|
@@ -83,23 +83,23 @@
 ```yaml
 # config/databases.yaml
 databases:
-  - id: sales\\\_db
+  - id: sales\\\\\\\_db
     name: 销售数据库
     type: mysql
     host: 192.168.1.10
     port: 3306
     database: sales
-    username: readonly\\\_user
-    password: ${SALES\\\_DB\\\_PASSWORD}  # 环境变量，不明文存储
+    username: readonly\\\\\\\_user
+    password: ${SALES\\\\\\\_DB\\\\\\\_PASSWORD}  # 环境变量，不明文存储
     
-  - id: finance\\\_db
+  - id: finance\\\\\\\_db
     name: 财务数据库
     type: postgresql
     host: 192.168.1.20
     port: 5432
     database: finance
-    username: readonly\\\_user
-    password: ${FINANCE\\\_DB\\\_PASSWORD}
+    username: readonly\\\\\\\_user
+    password: ${FINANCE\\\\\\\_DB\\\\\\\_PASSWORD}
 ```
 
 ### 3.3 schema扫描
@@ -109,18 +109,18 @@ databases:
 ```python
 # 扫描内容
 {
-  "table\\\_name": "orders",
-  "columns": \\\[
+  "table\\\\\\\_name": "orders",
+  "columns": \\\\\\\[
     {
-      "name": "order\\\_amount",
+      "name": "order\\\\\\\_amount",
       "type": "DECIMAL(10,2)",
       "nullable": false,
-      "sample\\\_values": \\\[1250.00, 3680.50, 890.00],  # 随机抽样10条
-      "null\\\_ratio": 0.0,
-      "distinct\\\_count": 8432
+      "sample\\\\\\\_values": \\\\\\\[1250.00, 3680.50, 890.00],  # 随机抽样10条
+      "null\\\\\\\_ratio": 0.0,
+      "distinct\\\\\\\_count": 8432
     }
   ],
-  "row\\\_count": 125000,
+  "row\\\\\\\_count": 125000,
   "comment": ""  # 如果数据库有注释则读取
 }
 ```
@@ -137,16 +137,16 @@ databases:
 PROMPT = """
 你是一个数据库语义分析专家，专注中国企业业务场景。
 
-数据库：{db\\\_name}
-表：{table\\\_name}
-字段：{column\\\_name}
-数据类型：{data\\\_type}
-样本值：{sample\\\_values}
-表中其他字段：{other\\\_columns}
+数据库：{db\\\\\\\_name}
+表：{table\\\\\\\_name}
+字段：{column\\\\\\\_name}
+数据类型：{data\\\\\\\_type}
+样本值：{sample\\\\\\\_values}
+表中其他字段：{other\\\\\\\_columns}
 
 请分析这个字段的业务含义，输出JSON：
 {{
-  "business\\\_name": "字段的中文业务名称",
+  "business\\\\\\\_name": "字段的中文业务名称",
   "description": "一句话描述这个字段是什么",
   "category": "金额/数量/时间/编码/状态/名称/其他",
   "unit": "单位（如元、个、%，无则null）",
@@ -161,12 +161,12 @@ PROMPT = """
 
 ```yaml
 # 语义名片格式（OSI标准兼容YAML）
-field\\\_id: sales\\\_db.orders.order\\\_amount
-source\\\_db: sales\\\_db
+field\\\\\\\_id: sales\\\\\\\_db.orders.order\\\\\\\_amount
+source\\\\\\\_db: sales\\\\\\\_db
 table: orders
-column: order\\\_amount
+column: order\\\\\\\_amount
 semantic:
-  business\\\_name: 订单金额
+  business\\\\\\\_name: 订单金额
   description: 每笔订单的含税销售金额
   category: 金额
   unit: 元
@@ -180,14 +180,14 @@ semantic:
 **第一层：语义匹配（SCHEMORA方案）**
 
 ```python
-def semantic\\\_match(field\\\_a: Field, field\\\_b: Field, threshold=0.85):
+def semantic\\\\\\\_match(field\\\\\\\_a: Field, field\\\\\\\_b: Field, threshold=0.85):
     """
     用bge-m3计算两个字段语义名片的embedding相似度
     相似度超过阈值则标记为候选映射
     """
-    emb\\\_a = embed(field\\\_a.semantic\\\_description)
-    emb\\\_b = embed(field\\\_b.semantic\\\_description)
-    similarity = cosine\\\_similarity(emb\\\_a, emb\\\_b)
+    emb\\\\\\\_a = embed(field\\\\\\\_a.semantic\\\\\\\_description)
+    emb\\\\\\\_b = embed(field\\\\\\\_b.semantic\\\\\\\_description)
+    similarity = cosine\\\\\\\_similarity(emb\\\\\\\_a, emb\\\\\\\_b)
     
     if similarity > threshold:
         return {
@@ -201,23 +201,23 @@ def semantic\\\_match(field\\\_a: Field, field\\\_b: Field, threshold=0.85):
 **第二层：分布验证（Wasserstein距离）**
 
 ```python
-from scipy.stats import wasserstein\\\_distance
+from scipy.stats import wasserstein\\\\\\\_distance
 import numpy as np
 
-def distribution\\\_match(field\\\_a: Field, field\\\_b: Field, threshold=0.15):
+def distribution\\\\\\\_match(field\\\\\\\_a: Field, field\\\\\\\_b: Field, threshold=0.15):
     """
     对数值型字段，比较数据分布形态
     Wasserstein距离越小，分布越相似
     适合识别"视角异名"：同一笔钱的不同视角表达
     """
-    if field\\\_a.dtype not in \\\['numeric'] or field\\\_b.dtype not in \\\['numeric']:
+    if field\\\\\\\_a.dtype not in \\\\\\\['numeric'] or field\\\\\\\_b.dtype not in \\\\\\\['numeric']:
         return {"skipped": True, "reason": "非数值型字段"}
     
     # 归一化后比较分布
-    a\\\_normalized = normalize(field\\\_a.sample\\\_values)
-    b\\\_normalized = normalize(field\\\_b.sample\\\_values)
+    a\\\\\\\_normalized = normalize(field\\\\\\\_a.sample\\\\\\\_values)
+    b\\\\\\\_normalized = normalize(field\\\\\\\_b.sample\\\\\\\_values)
     
-    distance = wasserstein\\\_distance(a\\\_normalized, b\\\_normalized)
+    distance = wasserstein\\\\\\\_distance(a\\\\\\\_normalized, b\\\\\\\_normalized)
     
     if distance < threshold:
         return {
@@ -240,48 +240,48 @@ def distribution\\\_match(field\\\_a: Field, field\\\_b: Field, threshold=0.15):
 **持续学习机制**
 
 ```python
-def update\\\_from\\\_confirmation(field\\\_a\\\_id, field\\\_b\\\_id, confirmed\\\_match: bool):
+def update\\\\\\\_from\\\\\\\_confirmation(field\\\\\\\_a\\\\\\\_id, field\\\\\\\_b\\\\\\\_id, confirmed\\\\\\\_match: bool):
     """
     用户在管理界面确认或拒绝一个映射后
     记录到训练集，下次同类情况自动处理
     """
-    store\\\_confirmation(field\\\_a\\\_id, field\\\_b\\\_id, confirmed\\\_match)
+    store\\\\\\\_confirmation(field\\\\\\\_a\\\\\\\_id, field\\\\\\\_b\\\\\\\_id, confirmed\\\\\\\_match)
     
     # 调整阈值（贝叶斯更新）
-    if confirmed\\\_match:
-        lower\\\_threshold\\\_for\\\_similar\\\_patterns()
+    if confirmed\\\\\\\_match:
+        lower\\\\\\\_threshold\\\\\\\_for\\\\\\\_similar\\\\\\\_patterns()
     else:
-        raise\\\_threshold\\\_for\\\_similar\\\_patterns()
+        raise\\\\\\\_threshold\\\\\\\_for\\\\\\\_similar\\\\\\\_patterns()
 ```
 
 ### 4.3 映射表存储
 
 ```sql
 -- SQLite映射表结构
-CREATE TABLE field\\\_mappings (
+CREATE TABLE field\\\\\\\_mappings (
     id INTEGER PRIMARY KEY,
-    field\\\_a\\\_id TEXT NOT NULL,      -- "sales\\\_db.orders.order\\\_amount"
-    field\\\_b\\\_id TEXT NOT NULL,      -- "finance\\\_db.invoices.sales\\\_cost"
-    canonical\\\_name TEXT,           -- 统一业务名称
+    field\\\\\\\_a\\\\\\\_id TEXT NOT NULL,      -- "sales\\\\\\\_db.orders.order\\\\\\\_amount"
+    field\\\\\\\_b\\\\\\\_id TEXT NOT NULL,      -- "finance\\\\\\\_db.invoices.sales\\\\\\\_cost"
+    canonical\\\\\\\_name TEXT,           -- 统一业务名称
     confidence REAL,               -- 置信度 0-1
     method TEXT,                   -- "semantic" / "distribution" / "manual"
     verified BOOLEAN DEFAULT 0,    -- 人工审核标记
-    created\\\_at TIMESTAMP,
-    verified\\\_at TIMESTAMP,
+    created\\\\\\\_at TIMESTAMP,
+    verified\\\\\\\_at TIMESTAMP,
     notes TEXT
 );
 
-CREATE TABLE semantic\\\_cards (
-    field\\\_id TEXT PRIMARY KEY,     -- "db\\\_id.table.column"
-    business\\\_name TEXT,
+CREATE TABLE semantic\\\\\\\_cards (
+    field\\\\\\\_id TEXT PRIMARY KEY,     -- "db\\\\\\\_id.table.column"
+    business\\\\\\\_name TEXT,
     description TEXT,
     category TEXT,
     unit TEXT,
     notes TEXT,
     confidence REAL,
     verified BOOLEAN DEFAULT 0,
-    raw\\\_schema TEXT,               -- 原始schema JSON
-    updated\\\_at TIMESTAMP
+    raw\\\\\\\_schema TEXT,               -- 原始schema JSON
+    updated\\\\\\\_at TIMESTAMP
 );
 ```
 
@@ -300,40 +300,40 @@ LLM只看到它被允许看到的schema和数据，其他的在到达LLM之前�
 ```yaml
 # config/permissions.yaml
 roles:
-  - id: sales\\\_staff
+  - id: sales\\\\\\\_staff
     name: 销售员工
-    allowed\\\_databases: \\\[sales\\\_db]
-    allowed\\\_tables:
-      sales\\\_db: \\\[orders, customers]
-    denied\\\_columns:
-      sales\\\_db.orders: \\\[cost\\\_price, profit\\\_margin]  # 销售员看不到成本和利润
-    row\\\_filter:
-      sales\\\_db.orders: "region = '{user.region}'"   # 只能看自己区域的数据
+    allowed\\\\\\\_databases: \\\\\\\[sales\\\\\\\_db]
+    allowed\\\\\\\_tables:
+      sales\\\\\\\_db: \\\\\\\[orders, customers]
+    denied\\\\\\\_columns:
+      sales\\\\\\\_db.orders: \\\\\\\[cost\\\\\\\_price, profit\\\\\\\_margin]  # 销售员看不到成本和利润
+    row\\\\\\\_filter:
+      sales\\\\\\\_db.orders: "region = '{user.region}'"   # 只能看自己区域的数据
 
-  - id: sales\\\_manager
+  - id: sales\\\\\\\_manager
     name: 销售经理
-    allowed\\\_databases: \\\[sales\\\_db]
-    allowed\\\_tables:
-      sales\\\_db: \\\[orders, customers, targets]
-    denied\\\_columns: {}
-    row\\\_filter:
-      sales\\\_db.orders: "department = '{user.department}'"
+    allowed\\\\\\\_databases: \\\\\\\[sales\\\\\\\_db]
+    allowed\\\\\\\_tables:
+      sales\\\\\\\_db: \\\\\\\[orders, customers, targets]
+    denied\\\\\\\_columns: {}
+    row\\\\\\\_filter:
+      sales\\\\\\\_db.orders: "department = '{user.department}'"
 
-  - id: finance\\\_staff
+  - id: finance\\\\\\\_staff
     name: 财务员工
-    allowed\\\_databases: \\\[finance\\\_db, sales\\\_db]
-    allowed\\\_tables:
-      finance\\\_db: \\\[invoices, costs]
-      sales\\\_db: \\\[orders]
-    denied\\\_columns: {}
-    row\\\_filter: {}
+    allowed\\\\\\\_databases: \\\\\\\[finance\\\\\\\_db, sales\\\\\\\_db]
+    allowed\\\\\\\_tables:
+      finance\\\\\\\_db: \\\\\\\[invoices, costs]
+      sales\\\\\\\_db: \\\\\\\[orders]
+    denied\\\\\\\_columns: {}
+    row\\\\\\\_filter: {}
 
   - id: admin
     name: 管理员
-    allowed\\\_databases: \\\["\\\*"]
-    allowed\\\_tables: {"\\\*": \\\["\\\*"]}
-    denied\\\_columns: {}
-    row\\\_filter: {}
+    allowed\\\\\\\_databases: \\\\\\\["\\\\\\\*"]
+    allowed\\\\\\\_tables: {"\\\\\\\*": \\\\\\\["\\\\\\\*"]}
+    denied\\\\\\\_columns: {}
+    row\\\\\\\_filter: {}
 ```
 
 ### 5.3 JWT权限执行
@@ -342,51 +342,51 @@ roles:
 import jwt
 from datetime import datetime, timedelta
 
-def create\\\_user\\\_token(user\\\_id: str, role\\\_id: str, extra\\\_attrs: dict):
+def create\\\\\\\_user\\\\\\\_token(user\\\\\\\_id: str, role\\\\\\\_id: str, extra\\\\\\\_attrs: dict):
     """
     登录时生成JWT token
     包含用户身份和业务属性（区域、部门等）
     """
     payload = {
-        "user\\\_id": user\\\_id,
-        "role\\\_id": role\\\_id,
-        "region": extra\\\_attrs.get("region"),
-        "department": extra\\\_attrs.get("department"),
+        "user\\\\\\\_id": user\\\\\\\_id,
+        "role\\\\\\\_id": role\\\\\\\_id,
+        "region": extra\\\\\\\_attrs.get("region"),
+        "department": extra\\\\\\\_attrs.get("department"),
         "exp": datetime.utcnow() + timedelta(hours=8)
     }
-    return jwt.encode(payload, SECRET\\\_KEY, algorithm="HS256")
+    return jwt.encode(payload, SECRET\\\\\\\_KEY, algorithm="HS256")
 
-def apply\\\_permissions(query\\\_context: dict, token: str) -> dict:
+def apply\\\\\\\_permissions(query\\\\\\\_context: dict, token: str) -> dict:
     """
     在构建发给LLM的context之前
     根据JWT移除不可见的表、字段
     并记录需要注入的WHERE条件
     """
-    user = jwt.decode(token, SECRET\\\_KEY, algorithms=\\\["HS256"])
-    role = get\\\_role(user\\\["role\\\_id"])
+    user = jwt.decode(token, SECRET\\\\\\\_KEY, algorithms=\\\\\\\["HS256"])
+    role = get\\\\\\\_role(user\\\\\\\["role\\\\\\\_id"])
     
     # 1. 过滤不可见的数据库和表
-    filtered\\\_schema = filter\\\_schema(query\\\_context\\\["schema"], role)
+    filtered\\\\\\\_schema = filter\\\\\\\_schema(query\\\\\\\_context\\\\\\\["schema"], role)
     
     # 2. 移除不可见的字段
-    filtered\\\_schema = remove\\\_denied\\\_columns(filtered\\\_schema, role)
+    filtered\\\\\\\_schema = remove\\\\\\\_denied\\\\\\\_columns(filtered\\\\\\\_schema, role)
     
     # 3. 准备行级过滤条件（执行SQL时注入）
-    row\\\_filters = build\\\_row\\\_filters(role, user)
+    row\\\\\\\_filters = build\\\\\\\_row\\\\\\\_filters(role, user)
     
     return {
-        "schema": filtered\\\_schema,
-        "row\\\_filters": row\\\_filters
+        "schema": filtered\\\\\\\_schema,
+        "row\\\\\\\_filters": row\\\\\\\_filters
     }
 
-def execute\\\_with\\\_rlac(sql: str, row\\\_filters: dict, db\\\_id: str):
+def execute\\\\\\\_with\\\\\\\_rlac(sql: str, row\\\\\\\_filters: dict, db\\\\\\\_id: str):
     """
     执行SQL时强制注入WHERE条件
     无论LLM生成什么SQL，行级过滤都会被加上
     """
-    if db\\\_id in row\\\_filters:
-        sql = inject\\\_where\\\_clause(sql, row\\\_filters\\\[db\\\_id])
-    return execute\\\_sql(sql)
+    if db\\\\\\\_id in row\\\\\\\_filters:
+        sql = inject\\\\\\\_where\\\\\\\_clause(sql, row\\\\\\\_filters\\\\\\\[db\\\\\\\_id])
+    return execute\\\\\\\_sql(sql)
 ```
 
 \---
@@ -421,37 +421,37 @@ app = FastAPI()
 @app.post("/v1/chat/completions")
 async def chat(request: ChatRequest, authorization: str = Header()):
     # 1. 验证JWT
-    user\\\_context = verify\\\_and\\\_decode\\\_jwt(authorization)
+    user\\\\\\\_context = verify\\\\\\\_and\\\\\\\_decode\\\\\\\_jwt(authorization)
     
     # 2. 提取用户问题
-    user\\\_question = extract\\\_last\\\_user\\\_message(request.messages)
+    user\\\\\\\_question = extract\\\\\\\_last\\\\\\\_user\\\\\\\_message(request.messages)
     
     # 3. 语义路由：找到最相关的数据库和表
-    target\\\_schema = route\\\_to\\\_schema(user\\\_question, user\\\_context)
+    target\\\\\\\_schema = route\\\\\\\_to\\\\\\\_schema(user\\\\\\\_question, user\\\\\\\_context)
     
     # 4. 权限过滤：移除不可见的内容
-    clean\\\_schema = apply\\\_permissions(target\\\_schema, user\\\_context)
+    clean\\\\\\\_schema = apply\\\\\\\_permissions(target\\\\\\\_schema, user\\\\\\\_context)
     
     # 5. 构建发给LLM的context
-    llm\\\_context = build\\\_context(
-        question=user\\\_question,
-        schema=clean\\\_schema\\\["schema"],
-        semantic\\\_cards=get\\\_relevant\\\_cards(clean\\\_schema),
-        history=request.messages\\\[:-1]
+    llm\\\\\\\_context = build\\\\\\\_context(
+        question=user\\\\\\\_question,
+        schema=clean\\\\\\\_schema\\\\\\\["schema"],
+        semantic\\\\\\\_cards=get\\\\\\\_relevant\\\\\\\_cards(clean\\\\\\\_schema),
+        history=request.messages\\\\\\\[:-1]
     )
     
     # 6. 调用企业自己的LLM
-    llm\\\_response = await call\\\_enterprise\\\_llm(llm\\\_context, request.model)
+    llm\\\\\\\_response = await call\\\\\\\_enterprise\\\\\\\_llm(llm\\\\\\\_context, request.model)
     
     # 7. 如果LLM生成了SQL，执行并返回结果
-    if contains\\\_sql(llm\\\_response):
-        sql = extract\\\_sql(llm\\\_response)
-        result = execute\\\_with\\\_rlac(sql, clean\\\_schema\\\["row\\\_filters"])
-        final\\\_response = format\\\_result\\\_for\\\_llm(result)
+    if contains\\\\\\\_sql(llm\\\\\\\_response):
+        sql = extract\\\\\\\_sql(llm\\\\\\\_response)
+        result = execute\\\\\\\_with\\\\\\\_rlac(sql, clean\\\\\\\_schema\\\\\\\["row\\\\\\\_filters"])
+        final\\\\\\\_response = format\\\\\\\_result\\\\\\\_for\\\\\\\_llm(result)
     else:
-        final\\\_response = llm\\\_response
+        final\\\\\\\_response = llm\\\\\\\_response
     
-    return openai\\\_format\\\_response(final\\\_response)
+    return openai\\\\\\\_format\\\\\\\_response(final\\\\\\\_response)
 ```
 
 ### 6.3 发给LLM的context格式
@@ -461,27 +461,27 @@ async def chat(request: ChatRequest, authorization: str = Header()):
 
 ## 可用数据
 
-### 销售数据库 (sales\\\_db)
-\\\*\\\*订单表\\\*\\\* (orders)
-- order\\\_id: 订单编号
-- order\\\_amount: 订单金额（含税，元）\\\[注：财务月口径，每月25号结账]
+### 销售数据库 (sales\\\\\\\_db)
+\\\\\\\*\\\\\\\*订单表\\\\\\\*\\\\\\\* (orders)
+- order\\\\\\\_id: 订单编号
+- order\\\\\\\_amount: 订单金额（含税，元）\\\\\\\[注：财务月口径，每月25号结账]
 - region: 销售区域（EC=华东, NC=华北, SC=华南）
-- order\\\_date: 下单日期
-- customer\\\_id: 客户编号
+- order\\\\\\\_date: 下单日期
+- customer\\\\\\\_id: 客户编号
 
-\\\*\\\*客户表\\\*\\\* (customers)  
-- customer\\\_id: 客户编号
-- customer\\\_name: 客户名称
+\\\\\\\*\\\\\\\*客户表\\\\\\\*\\\\\\\* (customers)  
+- customer\\\\\\\_id: 客户编号
+- customer\\\\\\\_name: 客户名称
 - tier: 客户等级（A/B/C）
 
 ## 跨库映射说明
-- sales\\\_db.orders.order\\\_amount = finance\\\_db.invoices.sales\\\_revenue（同一笔收入的两个视角）
+- sales\\\\\\\_db.orders.order\\\\\\\_amount = finance\\\\\\\_db.invoices.sales\\\\\\\_revenue（同一笔收入的两个视角）
 
 ## 权限说明
 当前用户只能查看 region='EC'（华东区）的数据，这个过滤条件会自动执行，无需在SQL中手动添加。
 
 ## 用户问题
-{user\\\_question}
+{user\\\\\\\_question}
 
 请根据以上信息回答问题。如需查询数据，请生成标准SQL。
 ```
@@ -516,21 +516,21 @@ async def chat(request: ChatRequest, authorization: str = Header()):
 ### 7.2 关键界面：语义名片审核
 
 ```
-字段：sales\\\_db.orders.order\\\_amount
+字段：sales\\\\\\\_db.orders.order\\\\\\\_amount
 
 自动生成的语义名片：
-  业务名称：订单金额        \\\[编辑]
-  描述：每笔订单的含税销售金额  \\\[编辑]
+  业务名称：订单金额        \\\\\\\[编辑]
+  描述：每笔订单的含税销售金额  \\\\\\\[编辑]
   分类：金额
   单位：元
-  注意事项：财务月口径       \\\[编辑]
+  注意事项：财务月口径       \\\\\\\[编辑]
   置信度：92%
 
 跨库疑似映射：
-  ↔ finance\\\_db.invoices.sales\\\_cost
+  ↔ finance\\\\\\\_db.invoices.sales\\\\\\\_cost
     相似度：87%（语义）+ 分布接近
     原因：两个字段描述相似，数值分布形态相同
-    \\\[确认映射] \\\[拒绝] \\\[需要更多信息]
+    \\\\\\\[确认映射] \\\\\\\[拒绝] \\\\\\\[需要更多信息]
 ```
 
 \---
@@ -545,15 +545,15 @@ async def chat(request: ChatRequest, authorization: str = Header()):
 
 ```sql
 -- 建库
-CREATE DATABASE sales\\\_dept;
-USE sales\\\_dept;
+CREATE DATABASE sales\\\\\\\_dept;
+USE sales\\\\\\\_dept;
 
 -- 订单表（字段命名用销售部门的习惯）
 CREATE TABLE orders (
-    order\\\_id VARCHAR(20) PRIMARY KEY,
-    cust\\\_name VARCHAR(100),          -- 客户叫法1
-    sales\\\_amount DECIMAL(12,2),      -- "销售额"（销售部门叫法）
-    sales\\\_date DATE,
+    order\\\\\\\_id VARCHAR(20) PRIMARY KEY,
+    cust\\\\\\\_name VARCHAR(100),          -- 客户叫法1
+    sales\\\\\\\_amount DECIMAL(12,2),      -- "销售额"（销售部门叫法）
+    sales\\\\\\\_date DATE,
     salesperson VARCHAR(50),
     region ENUM('华东','华北','华南','华西'),
     status VARCHAR(20)
@@ -561,15 +561,15 @@ CREATE TABLE orders (
 
 -- 客户表
 CREATE TABLE customers (
-    cust\\\_id VARCHAR(20) PRIMARY KEY,
-    cust\\\_name VARCHAR(100),
-    contact\\\_phone VARCHAR(20),
+    cust\\\\\\\_id VARCHAR(20) PRIMARY KEY,
+    cust\\\\\\\_name VARCHAR(100),
+    contact\\\\\\\_phone VARCHAR(20),
     level ENUM('A','B','C'),         -- 客户等级（销售叫"level"）
-    create\\\_date DATE
+    create\\\\\\\_date DATE
 );
 
 -- 插入模拟数据（用AI生成100条）
--- 关键：sales\\\_amount故意和finance\\\_db.invoices.revenue数值不完全一致
+-- 关键：sales\\\\\\\_amount故意和finance\\\\\\\_db.invoices.revenue数值不完全一致
 -- 模拟真实情况：销售按回款计，财务按开票计，存在时间差
 INSERT INTO orders VALUES
 ('ORD001', '上海科技有限公司', 125000.00, '2025-01-15', '张三', '华东', '已完成'),
@@ -581,43 +581,43 @@ INSERT INTO orders VALUES
 
 ```sql
 -- 建库
-CREATE DATABASE finance\\\_dept;
+CREATE DATABASE finance\\\\\\\_dept;
 
 -- 发票表（字段命名用财务部门的习惯）
 CREATE TABLE invoices (
-    invoice\\\_no VARCHAR(30) PRIMARY KEY,
-    client\\\_name VARCHAR(100),        -- 客户叫法2（和sales\\\_dept.customers.cust\\\_name同一个概念）
-    revenue DECIMAL(12,2),           -- "收入"（财务部门叫法，对应sales\\\_dept.orders.sales\\\_amount）
-    invoice\\\_date DATE,               -- 开票日期（比sales\\\_date晚3-7天，口径冲突）
-    tax\\\_amount DECIMAL(10,2),
+    invoice\\\\\\\_no VARCHAR(30) PRIMARY KEY,
+    client\\\\\\\_name VARCHAR(100),        -- 客户叫法2（和sales\\\\\\\_dept.customers.cust\\\\\\\_name同一个概念）
+    revenue DECIMAL(12,2),           -- "收入"（财务部门叫法，对应sales\\\\\\\_dept.orders.sales\\\\\\\_amount）
+    invoice\\\\\\\_date DATE,               -- 开票日期（比sales\\\\\\\_date晚3-7天，口径冲突）
+    tax\\\\\\\_amount DECIMAL(10,2),
     cost DECIMAL(12,2),              -- 成本（销售部门看不到）
     profit DECIMAL(12,2)             -- 利润（销售部门看不到）
 );
 
 -- 费用表
 CREATE TABLE expenses (
-    exp\\\_id VARCHAR(20) PRIMARY KEY,
+    exp\\\\\\\_id VARCHAR(20) PRIMARY KEY,
     category VARCHAR(50),
     amount DECIMAL(10,2),
-    exp\\\_date DATE,
+    exp\\\\\\\_date DATE,
     department VARCHAR(50),
     approver VARCHAR(50)
 );
 
 -- 插入数据
--- 关键：client\\\_name和sales\\\_dept.cust\\\_name是同一批客户，但写法略有不同
+-- 关键：client\\\\\\\_name和sales\\\\\\\_dept.cust\\\\\\\_name是同一批客户，但写法略有不同
 -- "上海科技有限公司" vs "上科技" -- 制造一个实体对齐难题
 INSERT INTO invoices VALUES
 ('INV2025001', '上海科技', 130000.00, '2025-01-22', 13000.00, 85000.00, 45000.00),
--- revenue=130000 vs sales\\\_amount=125000：故意不一样，测试系统能否识别口径差异
+-- revenue=130000 vs sales\\\\\\\_amount=125000：故意不一样，测试系统能否识别口径差异
 ```
 
 ### 8.2 故意设计的冲突场景
 
 |冲突类型|具体设计|期望检测到|
 |-|-|-|
-|同义异名|`sales\\\_amount` vs `revenue`|✅ 自动映射|
-|视角异名|`sales\\\_amount`（回款）vs `revenue`（开票）|⚠️ 检测到数值不完全一致，标记口径差异|
+|同义异名|`sales\\\\\\\_amount` vs `revenue`|✅ 自动映射|
+|视角异名|`sales\\\\\\\_amount`（回款）vs `revenue`（开票）|⚠️ 检测到数值不完全一致，标记口径差异|
 |同名不同义|两库都有`amount`但含义不同|✅ 检测到，要求人工确认|
 |格式不一致|日期格式：`2025-01-15` vs `20250115`|✅ 自动标准化|
 |实体名称差异|`上海科技有限公司` vs `上科技`|⚠️ 标记为疑似同一实体|
@@ -631,7 +631,7 @@ INSERT INTO invoices VALUES
 用例1：单库简单查询
 用户：华东区上个月的销售额是多少？
 期望：
-  - 正确路由到sales\\\_db
+  - 正确路由到sales\\\\\\\_db
   - 正确识别"上个月"的时间范围
   - 生成正确SQL，执行，返回数字
   - LLM用自然语言回答
@@ -679,11 +679,11 @@ INSERT INTO invoices VALUES
 操作：
   - 接入两个库
   - 等待自动扫描完成
-  - 查看是否自动将sales\\\_amount和revenue标记为映射候选
+  - 查看是否自动将sales\\\\\\\_amount和revenue标记为映射候选
 期望：置信度 > 85%，自动进入映射表
 
 用例8：口径冲突检测
-操作：查看sales\\\_amount和revenue的映射
+操作：查看sales\\\\\\\_amount和revenue的映射
 期望：
   - 语义相似度高（都是销售收入）
   - 但分布验证显示数值有系统性偏差（开票比回款晚、金额略高）
@@ -734,13 +734,13 @@ INSERT INTO invoices VALUES
 
 ```bash
 # VPS1（MySQL）
-docker run -d --name sales\\\_db \\\\
-  -e MYSQL\\\_ROOT\\\_PASSWORD=test123 \\\\
+docker run -d --name sales\\\\\\\_db \\\\\\\\
+  -e MYSQL\\\\\\\_ROOT\\\\\\\_PASSWORD=test123 \\\\\\\\
   -p 3306:3306 mysql:8.0
 
 # VPS2（PostgreSQL）
-docker run -d --name finance\\\_db \\\\
-  -e POSTGRES\\\_PASSWORD=test123 \\\\
+docker run -d --name finance\\\\\\\_db \\\\\\\\
+  -e POSTGRES\\\\\\\_PASSWORD=test123 \\\\\\\\
   -p 5432:5432 postgres:15
 
 # 用Claude生成建表语句和测试数据
