@@ -90,7 +90,12 @@ def create_app(config: AppConfig) -> FastAPI:
     app.state.executor = executor
     app.state.audit_logger = audit_logger
     app.state.rate_limiter = rate_limiter
-    app.state.mapping_store = MappingStore(config.server.metadata_db)
+
+    # 初始化映射存储和schema图
+    mapping_store = MappingStore(config.server.metadata_db)
+    app.state.mapping_store = mapping_store
+    schema_graph = build_schema_graph(db_manager, metadata, mapping_store)
+    app.state.schema_graph = schema_graph
 
     # 挂载管理后台路由
     from .admin import router as admin_router
@@ -158,9 +163,31 @@ def create_app(config: AppConfig) -> FastAPI:
         # 构建允许访问的表名集合（用于SQL审查）
         allowed_tables = {t.table_name for t in visible_tables}
 
-        # ---- 第4关：构建LLM上下文 ----
+        # ---- 第4关：Schema Linking + 构建LLM上下文 ----
         user_question = _extract_last_user_message(request.messages)
-        schema_desc = _build_schema_description(visible_tables, metadata)
+
+        # Schema linking：只给LLM看和问题相关的表，而不是全部visible表
+        try:
+            linked_nodes = await link_schema(
+                question=user_question,
+                graph=app.state.schema_graph,
+                llm_client=llm,
+                max_tables=5,
+            )
+            # 取权限过滤和schema linking的交集
+            final_tables = [
+                t for t in visible_tables
+                if any(n.table_name == t.table_name and n.db_id == t.db_id
+                       for n in linked_nodes)
+            ]
+            # 如果linking没找到任何表，回退到全量visible
+            if not final_tables:
+                final_tables = visible_tables
+        except Exception:
+            # schema linking失败时回退到全量
+            final_tables = visible_tables
+
+        schema_desc = _build_schema_description(final_tables, metadata)
         permission_notes = _build_permission_notes(row_filters)
 
         context = QUERY_CONTEXT_TEMPLATE.format(
@@ -191,33 +218,47 @@ def create_app(config: AppConfig) -> FastAPI:
                     config.llm.model,
                 )
 
-            # 执行SQL（内部会做：sqlparse验证 → 表级审查 → RLAC → 数量限制 → 脱敏）
-            result = executor.execute(
-                db_id=target_db,
+            # 执行SQL（带自纠正+合理性校验+溯源）
+            exec_result = await execute_with_retry(
                 sql=sql,
+                target_db=target_db,
+                user_question=user_question,
+                schema_desc=schema_desc,
+                executor=executor,
+                llm=llm,
                 row_filters=row_filters,
                 allowed_tables=allowed_tables,
                 user_id=user_id,
                 role_id=role_id,
-                question=user_question,
+                audit_logger=audit_logger,
             )
 
-            if not result["success"]:
+            if not exec_result["success"]:
                 return _build_response(
-                    f"查询执行失败：{result['error']}", config.llm.model
+                    f"查询执行失败，已尝试{exec_result['retry_count']}次自动修正。\n"
+                    f"错误：{exec_result.get('error', '未知')}\n"
+                    f"（追踪ID：{exec_result['trace_id']}）",
+                    config.llm.model,
                 )
 
             # 将结果发回LLM做自然语言解释
-            result_text = _format_result(result)
+            result_text = _format_result(exec_result)
             interpret_prompt = RESULT_INTERPRETATION_PROMPT.format(
                 question=user_question,
-                sql=sql,
+                sql=exec_result["sql_used"],
                 result=result_text,
             )
             final_answer = await llm.chat(
                 [ChatMessage(role="user", content=interpret_prompt)]
             )
-            return _build_response(final_answer, config.llm.model)
+
+            # 附加数据来源和异常提示
+            source_note = f"\n\n数据来源：{target_db}，查询时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            anomaly_note = ""
+            if exec_result.get("anomaly"):
+                anomaly_note = f"\n\n注意：{exec_result['anomaly']}，请确认结果是否符合预期。"
+
+            return _build_response(final_answer + source_note + anomaly_note, config.llm.model)
         else:
             # LLM直接回答，无需执行SQL
             audit_logger.log_query(
