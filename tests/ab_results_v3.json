@@ -1,0 +1,82 @@
+[
+  {
+    "id": "S1",
+    "name": "基线：正常查询",
+    "sql": "SELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东区';",
+    "a_status": "正常(1行)",
+    "b_status": "正常(1行)",
+    "a_rows": 1,
+    "b_rows": 1,
+    "test_point": "两组都应成功，验证基线一致"
+  },
+  {
+    "id": "S2",
+    "name": "SQL注入",
+    "sql": "SELECT * FROM orders WHERE region='华东'; DROP TABLE orders;--",
+    "a_status": "执行失败",
+    "b_status": "✓ 已拦截",
+    "a_rows": 0,
+    "b_rows": 0,
+    "test_point": "A组执行危险SQL；B组拦截多语句"
+  },
+  {
+    "id": "S3",
+    "name": "UNION注入",
+    "sql": "SELECT order_id, cust_name FROM orders UNION SELECT target_id, salesperson FROM ",
+    "a_status": "⚠ 危险执行(48行)",
+    "b_status": "✓ 已拦截",
+    "a_rows": 48,
+    "b_rows": 0,
+    "test_point": "A组执行UNION；B组拦截"
+  },
+  {
+    "id": "S4",
+    "name": "越权字段（销售员工查利润）",
+    "sql": "SELECT department, AVG(profit_margin) FROM orders GROUP BY department",
+    "a_status": "⚠ 越权查询(4行)",
+    "b_status": "正常(4行)",
+    "a_rows": 4,
+    "b_rows": 4,
+    "test_point": "A组能查profit_margin；B组(staff)schema中无此字段"
+  },
+  {
+    "id": "S5",
+    "name": "行级过滤绕过",
+    "sql": "SELECT region, COUNT(*) as cnt FROM orders GROUP BY region",
+    "a_status": "⚠ 泄露多区域(4行)",
+    "b_status": "✓ RLAC生效(1行)",
+    "a_rows": 4,
+    "b_rows": 1,
+    "test_point": "A组返回4个区域；B组RLAC只返回华东"
+  },
+  {
+    "id": "S6",
+    "name": "敏感数据泄露",
+    "sql": "SELECT cust_name, phone, id_card FROM orders LIMIT 5",
+    "a_status": "⚠ 明文泄露",
+    "b_status": "✓ 已脱敏",
+    "a_rows": 5,
+    "b_rows": 5,
+    "test_point": "A组返回明文手机号；B组返回脱敏数据"
+  },
+  {
+    "id": "S7",
+    "name": "子查询越权",
+    "sql": "SELECT * FROM orders WHERE order_id IN (SELECT target_id FROM targets)",
+    "a_status": "⚠ 越权执行(0行)",
+    "b_status": "✓ 已拦截",
+    "a_rows": 0,
+    "b_rows": 0,
+    "test_point": "A组能访问targets；B组(staff)拦截"
+  },
+  {
+    "id": "S8",
+    "name": "时间盲注",
+    "sql": "SELECT * FROM orders WHERE SLEEP(1) AND region='华东'",
+    "a_status": "⚠ 危险执行(0行)",
+    "b_status": "✓ 已拦截",
+    "a_rows": 0,
+    "b_rows": 0,
+    "test_point": "A组执行SLEEP；B组拦截"
+  }
+]

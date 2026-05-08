@@ -1,0 +1,57 @@
+[
+  {
+    "id": "T1",
+    "question": "华东区总共卖了多少钱？",
+    "why": "'卖了多少钱'对应sales_amount，裸schema也能猜到",
+    "c_sql": "SELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东区';",
+    "c_success": true,
+    "c_rows": 1,
+    "d_sql": "SELECT SUM(sales_amount) AS total_sales_amount\nFROM orders\nWHERE region = '华东';",
+    "d_success": true,
+    "d_rows": 1
+  },
+  {
+    "id": "T2",
+    "question": "张三Q1完成了多少？离目标还差多少？",
+    "why": "需要知道quarter格式是'2025Q1'",
+    "c_sql": "SELECT \n    salesperson,\n    quarter,\n    target_amount,\n    actual_amount,\n    (target_amount - actual_amount) AS remaining_amount\nFROM targets\nWHERE salesperson = '张三'\n  AND quarter = 'Q1';",
+    "c_success": true,
+    "c_rows": 0,
+    "d_sql": "SELECT \n    salesperson,\n    quarter,\n    target_amount,\n    actual_amount,\n    (target_amount - actual_amount) AS remaining_amount\nFROM targets\nWHERE salesperson = '张三'\n  AND quarter = '2025Q1';",
+    "d_success": true,
+    "d_rows": 1
+  },
+  {
+    "id": "T3",
+    "question": "上个季度各部门的费效比怎么样？",
+    "why": "'费效比'不是字段名，需要理解为cost_price/sales_amount",
+    "c_sql": "SELECT \n    department,\n    SUM(cost_price) / SUM(sales_amount) AS cost_effectiveness_ratio\nFROM orders\nWHERE sales_date BETWEEN '2024-10-01' AND '2024-12-31'\n  AND sales_amount > 0\nGROUP BY department\nORDER BY department;",
+    "c_success": true,
+    "c_rows": 0,
+    "d_sql": "SELECT \n    department,\n    ROUND(SUM(cost_price) / SUM(sales_amount), 4) AS cost_effectiveness_ratio\nFROM orders\nWHERE \n    sales_date >= '2025-01-01' \n    AND sales_date < '2025-04-01'\n    AND status = '已完成'\nGROUP BY department\nORDER BY department;",
+    "d_success": true,
+    "d_rows": 4
+  },
+  {
+    "id": "T4",
+    "question": "哪些大客户最近没下单了？",
+    "why": "'大客户'=level='A'，需要知道枚举含义",
+    "c_sql": "SELECT \n    c.cust_id,\n    c.cust_name,\n    c.contact_phone,\n    c.level,\n    c.region,\n    MAX(o.sales_date) AS last_order_date\nFROM customers c\nLEFT JOIN orders o ON c.cust_name = o.cust_name\nWHERE c.level = 'A'\nGROUP BY c.cust_id, c.cust_name, c.contact_phone, c.level, c.region\nHAVING MAX(o.sales_date) IS NULL \n    OR MAX(o.sales_date) < DATE_SUB(CURDATE(), INTERVAL 3 MONTH)\nORDER BY last_order_date ASC;",
+    "c_success": true,
+    "c_rows": 6,
+    "d_sql": "SELECT \n    c.cust_name,\n    c.level,\n    c.region,\n    c.contact_phone,\n    MAX(o.sales_date) AS last_order_date\nFROM customers c\nLEFT JOIN orders o ON c.cust_name = o.cust_name\nWHERE c.level = 'A'\nGROUP BY c.cust_name, c.level, c.region, c.contact_phone\nHAVING MAX(o.sales_date) IS NULL \n    OR MAX(o.sales_date) < DATE_SUB(CURDATE(), INTERVAL 6 MONTH)\nORDER BY last_order_date ASC;",
+    "d_success": true,
+    "d_rows": 6
+  },
+  {
+    "id": "T5",
+    "question": "进行中的大单有哪些？超过20万的",
+    "why": "需要知道status枚举值是'进行中'而非'in_progress'",
+    "c_sql": "SELECT \n    order_id,\n    cust_name,\n    sales_amount,\n    cost_price,\n    profit_margin,\n    sales_date,\n    salesperson,\n    region,\n    department,\n    status,\n    phone,\n    id_card\nFROM orders\nWHERE status = '进行中'\n  AND sales_amount > 200000\nORDER BY sales_amount DESC;",
+    "c_success": true,
+    "c_rows": 3,
+    "d_sql": "SELECT \n    order_id,\n    cust_name,\n    sales_amount,\n    sales_date,\n    salesperson,\n    region,\n    department\nFROM orders\nWHERE status = '进行中'\n  AND sales_amount > 200000\nORDER BY sales_amount DESC;",
+    "d_success": true,
+    "d_rows": 3
+  }
+]
