@@ -143,6 +143,122 @@ class SchemaScanner:
             comment=comment,
         )
 
+    def detect_name_conflicts(
+        self,
+        db_manager: "DatabaseManager",
+        metadata: "MetadataStore",
+    ) -> list[dict]:
+        """
+        扫描所有已接入数据库，检测跨库同名表/字段冲突。
+
+        返回冲突列表，每条包含：
+        - conflict_type: "table" 或 "column"
+        - name: 冲突的表名或字段名
+        - occurrences: [{db_id, table, sample_values, distribution_stats}]
+        - distribution_similar: bool（Wasserstein距离是否接近）
+        - severity: "high"（同名异义）或 "low"（同名同义）
+        """
+        from scipy.stats import wasserstein_distance
+        import numpy as np
+
+        all_tables = metadata.get_all_tables()
+        conflicts = []
+
+        # 按表名分组
+        table_name_map: dict[str, list] = {}
+        for table in all_tables:
+            table_name_map.setdefault(table.table_name, []).append(table)
+
+        for table_name, tables in table_name_map.items():
+            if len(tables) < 2:
+                continue
+
+            # 同名表：比较各库中该表的字段集合
+            for i in range(len(tables)):
+                for j in range(i + 1, len(tables)):
+                    t_a, t_b = tables[i], tables[j]
+                    cols_a = {c.name for c in t_a.columns}
+                    cols_b = {c.name for c in t_b.columns}
+                    overlap = cols_a & cols_b
+                    jaccard = len(overlap) / len(cols_a | cols_b) if cols_a | cols_b else 0
+
+                    # 字段重叠度低，说明同名但结构不同，高风险冲突
+                    severity = "low" if jaccard > 0.7 else "high"
+
+                    conflicts.append({
+                        "conflict_type": "table",
+                        "name": table_name,
+                        "db_a": t_a.db_id,
+                        "db_b": t_b.db_id,
+                        "field_overlap_ratio": round(jaccard, 3),
+                        "severity": severity,
+                        "confirmed": False,
+                        "warning_text": "",
+                    })
+
+        # 按字段名分组（跨库同名字段）
+        field_map: dict[str, list] = {}
+        for table in all_tables:
+            for col in table.columns:
+                key = col.name.lower()
+                field_map.setdefault(key, []).append({
+                    "db_id": table.db_id,
+                    "table": table.table_name,
+                    "col": col,
+                    "field_id": f"{table.db_id}.{table.table_name}.{col.name}",
+                })
+
+        for field_name, occurrences in field_map.items():
+            if len(occurrences) < 2:
+                continue
+
+            # 只检测数值型字段的分布差异
+            numeric_occs = [
+                o for o in occurrences
+                if any(k in o["col"].type.lower()
+                       for k in ("int", "float", "decimal", "numeric", "double"))
+            ]
+
+            distribution_similar = None
+            if len(numeric_occs) >= 2 and numeric_occs[0]["col"].sample_values:
+                try:
+                    vals_a = [float(v) for v in numeric_occs[0]["col"].sample_values
+                              if v is not None]
+                    vals_b = [float(v) for v in numeric_occs[1]["col"].sample_values
+                              if v is not None]
+                    if vals_a and vals_b:
+                        # 归一化后计算Wasserstein距离
+                        range_a = max(vals_a) - min(vals_a) or 1
+                        range_b = max(vals_b) - min(vals_b) or 1
+                        norm_a = [(v - min(vals_a)) / range_a for v in vals_a]
+                        norm_b = [(v - min(vals_b)) / range_b for v in vals_b]
+                        dist = wasserstein_distance(norm_a, norm_b)
+                        distribution_similar = dist < 0.15
+                except Exception:
+                    pass
+
+            # 分布不相似的同名字段 = 高风险同名异义
+            severity = "low"
+            if distribution_similar is False:
+                severity = "high"
+
+            conflicts.append({
+                "conflict_type": "column",
+                "name": field_name,
+                "occurrences": [
+                    {"db_id": o["db_id"], "table": o["table"], "field_id": o["field_id"]}
+                    for o in occurrences
+                ],
+                "distribution_similar": distribution_similar,
+                "severity": severity,
+                "confirmed": False,
+                "warning_text": "",
+            })
+
+        # 写入metadata，推送管理界面待确认
+        metadata.store_conflicts(conflicts)
+        return conflicts
+
     def _serialize_value(self, value) -> str | int | float | None:
         """将数据库值序列化为可JSON化的基础类型"""
         if value is None:

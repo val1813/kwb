@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 import time
 import uuid
+import uuid as _uuid
+from datetime import datetime
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
@@ -28,8 +30,15 @@ from .models import (
     TableInfo,
 )
 from .permissions import PermissionEngine
-from .prompts import QUERY_CONTEXT_TEMPLATE, RESULT_INTERPRETATION_PROMPT, SQL_GENERATION_SYSTEM
+from .prompts import (
+    QUERY_CONTEXT_TEMPLATE,
+    RESULT_INTERPRETATION_PROMPT,
+    SQL_GENERATION_SYSTEM,
+    SQL_EMPTY_RESULT_PROMPT,
+    SQL_ERROR_CORRECTION_PROMPT,
+)
 from .mappings import MappingStore
+from .schema_graph import build_schema_graph, link_schema, SchemaNode
 from .security import AuditLogger, RateLimiter
 
 # SQL代码块提取：优先匹配```sql代码块，其次匹配裸SELECT语句
@@ -362,3 +371,163 @@ def _build_response(content: str, model: str) -> JSONResponse:
         ],
     )
     return JSONResponse(content=response.model_dump())
+
+
+# ============ 执行层：自纠正 + 合理性校验 + 溯源 ============
+
+
+async def execute_with_retry(
+    sql: str,
+    target_db: str,
+    user_question: str,
+    schema_desc: str,
+    executor: "QueryExecutor",
+    llm: "LLMClient",
+    row_filters: dict,
+    allowed_tables: set,
+    user_id: str,
+    role_id: str,
+    audit_logger: "AuditLogger",
+    max_retries: int = 2,
+) -> dict:
+    """
+    执行SQL，失败时自动纠正重试。
+    返回：{
+      "success": bool,
+      "data": [...],
+      "sql_used": str,
+      "retry_count": int,
+      "trace_id": str,       # 溯源ID，写入audit_log
+      "anomaly": str | None, # 合理性校验异常描述
+    }
+    """
+    trace_id = _uuid.uuid4().hex[:12]
+    current_sql = sql
+    last_error = None
+
+    for attempt in range(max_retries + 1):
+        result = executor.execute(
+            db_id=target_db,
+            sql=current_sql,
+            row_filters=row_filters,
+            allowed_tables=allowed_tables,
+            user_id=user_id,
+            role_id=role_id,
+            question=user_question,
+        )
+
+        if result["success"]:
+            # ---- 合理性校验 ----
+            anomaly = _check_result_anomaly(result, user_question)
+
+            # 空结果且还有重试机会：尝试放宽查询
+            if not result["data"] and attempt < max_retries:
+                correction_prompt = SQL_EMPTY_RESULT_PROMPT.format(
+                    question=user_question,
+                    sql=current_sql,
+                    schema_description=schema_desc,
+                )
+                corrected = await llm.chat(
+                    [ChatMessage(role="user", content=correction_prompt)],
+                    temperature=0,
+                    max_tokens=500,
+                )
+                # 如果LLM说确实无数据，接受空结果
+                if "确实无数据" in corrected:
+                    break
+                new_sql = _extract_sql_from_response(corrected)
+                if new_sql and new_sql != current_sql:
+                    current_sql = new_sql
+                    continue
+
+            # 记录溯源信息到audit_log（包含trace_id）
+            audit_logger.log_query(
+                user_id=user_id,
+                role_id=role_id,
+                question=user_question,
+                generated_sql=current_sql,
+                result_rows=result.get("row_count", 0),
+                success=True,
+                extra={"trace_id": trace_id, "retry_count": attempt},
+            )
+
+            return {
+                "success": True,
+                "data": result.get("data", []),
+                "row_count": result.get("row_count", 0),
+                "truncated": result.get("truncated", False),
+                "sql_used": current_sql,
+                "retry_count": attempt,
+                "trace_id": trace_id,
+                "anomaly": anomaly,
+            }
+
+        # 执行失败：尝试LLM纠正
+        last_error = result.get("error", "未知错误")
+
+        if attempt < max_retries:
+            correction_prompt = SQL_ERROR_CORRECTION_PROMPT.format(
+                question=user_question,
+                sql=current_sql,
+                error=last_error,
+                schema_description=schema_desc,
+            )
+            corrected = await llm.chat(
+                [ChatMessage(role="user", content=correction_prompt)],
+                temperature=0,
+                max_tokens=500,
+            )
+            new_sql = _extract_sql_from_response(corrected)
+            if new_sql:
+                current_sql = new_sql
+            else:
+                break  # LLM无法修正，放弃
+
+    # 所有重试失败
+    audit_logger.log_query(
+        user_id=user_id,
+        role_id=role_id,
+        question=user_question,
+        generated_sql=current_sql,
+        result_rows=0,
+        success=False,
+        extra={"trace_id": trace_id, "error": last_error},
+    )
+    return {
+        "success": False,
+        "error": last_error,
+        "sql_used": current_sql,
+        "retry_count": max_retries,
+        "trace_id": trace_id,
+        "anomaly": None,
+    }
+
+
+def _check_result_anomaly(result: dict, question: str) -> str | None:
+    """
+    合理性校验：检测结果是否异常。
+    注意：只能检测统计异常，无法检测语义错误（选错库等）。
+    语义错误由治理层的冲突检测+warning机制处理。
+    """
+    data = result.get("data", [])
+    row_count = result.get("row_count", 0)
+
+    # 异常1：问聚合问题但返回大量明细
+    aggregate_keywords = ["总", "合计", "汇总", "平均", "最大", "最小", "多少"]
+    if any(kw in question for kw in aggregate_keywords) and row_count > 100:
+        return f"问题看起来需要聚合结果，但返回了{row_count}行明细数据，可能缺少GROUP BY"
+
+    # 异常2：单值问题返回多行
+    single_keywords = ["是多少", "有多少", "共有", "一共"]
+    if any(kw in question for kw in single_keywords) and row_count > 10:
+        return f"问题期望单个数值，但返回了{row_count}行"
+
+    return None  # 无异常
+
+
+def _extract_sql_from_response(response: str) -> str | None:
+    """从LLM响应中提取SQL"""
+    match = re.search(r"```sql\s*\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return None

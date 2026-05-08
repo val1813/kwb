@@ -182,3 +182,81 @@ class MetadataStore:
     def close(self):
         """关闭数据库连接"""
         self.conn.close()
+
+    # ---- 冲突检测存储操作 ----
+
+    def store_conflicts(self, conflicts: list[dict]):
+        """存储冲突检测结果到SQLite"""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS schema_conflicts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conflict_type TEXT,
+                name TEXT,
+                details_json TEXT,
+                severity TEXT,
+                confirmed BOOLEAN DEFAULT 0,
+                warning_text TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # 清除旧的未确认冲突
+        self.conn.execute("DELETE FROM schema_conflicts WHERE confirmed = 0")
+        for c in conflicts:
+            self.conn.execute(
+                """INSERT INTO schema_conflicts
+                   (conflict_type, name, details_json, severity)
+                   VALUES (?, ?, ?, ?)""",
+                (c["conflict_type"], c["name"],
+                 json.dumps(c, ensure_ascii=False), c["severity"])
+            )
+        self.conn.commit()
+
+    def get_conflicts(self, unconfirmed_only=False) -> list[dict]:
+        """获取冲突列表"""
+        self.conn.row_factory = sqlite3.Row
+        sql = "SELECT * FROM schema_conflicts"
+        if unconfirmed_only:
+            sql += " WHERE confirmed = 0"
+        sql += " ORDER BY severity DESC, created_at DESC"
+        try:
+            rows = self.conn.execute(sql).fetchall()
+            result = [dict(r) for r in rows]
+        except sqlite3.OperationalError:
+            # 表不存在时返回空列表
+            result = []
+        finally:
+            self.conn.row_factory = None
+        return result
+
+    def confirm_conflict(self, conflict_id: int, warning_text: str):
+        """
+        人工确认冲突，写入warning文本。
+        warning_text会被注入到相关字段的语义名片里。
+        """
+        self.conn.execute(
+            """UPDATE schema_conflicts
+               SET confirmed=1, warning_text=?
+               WHERE id=?""",
+            (warning_text, conflict_id)
+        )
+        self.conn.commit()
+
+    def get_warnings_for_field(self, field_id: str) -> list[str]:
+        """
+        查询某个字段关联的所有warning文本，
+        供构建LLM context时注入。
+        """
+        try:
+            self.conn.row_factory = sqlite3.Row
+            rows = self.conn.execute(
+                "SELECT warning_text, details_json FROM schema_conflicts WHERE confirmed=1"
+            ).fetchall()
+            self.conn.row_factory = None
+        except sqlite3.OperationalError:
+            return []
+        warnings = []
+        for row in rows:
+            warning_text = row["warning_text"]
+            if warning_text and field_id in (row["details_json"] or ""):
+                warnings.append(warning_text)
+        return warnings

@@ -68,3 +68,40 @@ RESULT_INTERPRETATION_PROMPT = """用户问题：{question}
 {result}
 
 请用自然语言回答用户的问题，基于以上查询结果。简洁明了，突出关键数据。"""
+
+
+# ============ SQL纠正（执行层自纠正） ============
+
+SQL_ERROR_CORRECTION_PROMPT = """用户问题：{question}
+
+你刚才生成的SQL执行失败了：
+```sql
+{sql}
+```
+
+错误信息：{error}
+
+可用的schema：
+{schema_description}
+
+请根据错误信息修正SQL。只输出修正后的SQL，放在```sql代码块中，不要其他内容。"""
+
+
+SQL_EMPTY_RESULT_PROMPT = """用户问题：{question}
+
+你生成的SQL执行成功但返回了空结果：
+```sql
+{sql}
+```
+
+可用的schema：
+{schema_description}
+
+可能的原因：
+1. 筛选条件过严（时间范围、状态值等）
+2. 表名或字段理解有偏差
+3. 确实没有数据
+
+请重新分析，尝试放宽条件或调整查询逻辑。
+如果确认应该有数据，输出修正后的SQL（```sql代码块）。
+如果合理判断就是没有数据，回答"该条件下确实无数据：[说明原因]"。"""

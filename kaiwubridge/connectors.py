@@ -53,6 +53,52 @@ class DatabaseManager:
                 f"@{config.host}:{config.port}/{config.database}"
                 f"?driver=ODBC+Driver+17+for+SQL+Server"
             )
+        elif db_type == "oracle":
+            # Oracle支持：优先使用oracledb驱动，回退到cx_Oracle
+            # 需安装：pip install oracledb 或 pip install cx_Oracle
+            try:
+                import oracledb  # noqa: F401
+                driver = "oracledb"
+            except ImportError:
+                try:
+                    import cx_Oracle  # noqa: F401
+                    driver = "cx_oracle"
+                except ImportError:
+                    raise ImportError(
+                        "Oracle数据库需要安装驱动：pip install oracledb（推荐）"
+                        "或 pip install cx_Oracle"
+                    )
+            return (
+                f"oracle+{driver}://{config.username}:{config.password}"
+                f"@{config.host}:{config.port}/{config.database}"
+            )
+        elif db_type in ("dm", "dameng", "dm8"):
+            # 达梦DM8支持：使用dmPython驱动
+            # 需安装：pip install dmPython（从达梦官方获取）
+            try:
+                import dmPython  # noqa: F401
+            except ImportError:
+                raise ImportError(
+                    "达梦数据库需要安装驱动：pip install dmPython"
+                    "（请从达梦官方渠道获取安装包）"
+                )
+            return (
+                f"dm+dmPython://{config.username}:{config.password}"
+                f"@{config.host}:{config.port}/{config.database}"
+            )
+        elif db_type in ("kingbase", "kingbasees", "kb"):
+            # 人大金仓KingbaseES支持：兼容PostgreSQL协议，使用psycopg2驱动
+            # 需安装：pip install psycopg2-binary
+            try:
+                import psycopg2  # noqa: F401
+            except ImportError:
+                raise ImportError(
+                    "人大金仓数据库需要安装驱动：pip install psycopg2-binary"
+                )
+            return (
+                f"postgresql+psycopg2://{config.username}:{config.password}"
+                f"@{config.host}:{config.port}/{config.database}"
+            )
         else:
             raise ValueError(f"不支持的数据库类型: {db_type}")
 

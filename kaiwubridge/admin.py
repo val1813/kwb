@@ -368,6 +368,37 @@ async def list_security_events(request: Request, limit: int = 100):
     return {"events": events, "total": len(events)}
 
 
+# ============ 冲突审核 ============
+
+
+@router.get("/api/conflicts")
+async def list_conflicts(request: Request, unconfirmed_only: bool = False):
+    """获取冲突列表"""
+    metadata = request.app.state.metadata
+    return metadata.get_conflicts(unconfirmed_only=unconfirmed_only)
+
+
+class ConflictConfirmRequest(BaseModel):
+    """冲突确认请求"""
+    warning_text: str  # 管理员填写的warning说明
+
+
+@router.post("/api/conflicts/{conflict_id}/confirm")
+async def confirm_conflict(
+    conflict_id: int,
+    body: ConflictConfirmRequest,
+    request: Request,
+):
+    """
+    管理员确认冲突并填写warning说明。
+    warning_text示例：
+    "注意：sales_db.aaa是销售成本，finance_db.aaa是销售提成，两者完全不同，请勿混用"
+    """
+    metadata = request.app.state.metadata
+    metadata.confirm_conflict(conflict_id, body.warning_text)
+    return {"status": "confirmed"}
+
+
 # ============ 系统统计 ============
 
 
