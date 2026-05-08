@@ -1,0 +1,46 @@
+roles:
+  - id: admin
+    name: 管理员
+    allowed_databases: ["*"]
+    allowed_tables:
+      "*": ["*"]
+    denied_columns: {}
+    row_filter: {}
+
+  - id: sales_staff
+    name: 销售员工
+    allowed_databases: [demo_db]
+    allowed_tables:
+      demo_db: [orders, customers]
+    denied_columns:
+      demo_db.orders: [cost_price, profit_margin]
+    row_filter:
+      demo_db.orders: "region = '{user.region}'"
+
+  - id: sales_manager
+    name: 销售经理
+    allowed_databases: [demo_db]
+    allowed_tables:
+      demo_db: [orders, customers]
+    denied_columns: {}
+    row_filter:
+      demo_db.orders: "department = '{user.department}'"
+
+users:
+  - id: admin
+    name: 管理员
+    role: admin
+    attrs: {}
+
+  - id: zhangsan
+    name: 张三
+    role: sales_staff
+    attrs:
+      region: 华东
+      department: 销售一部
+
+  - id: lisi
+    name: 李四
+    role: sales_manager
+    attrs:
+      department: 销售一部

@@ -1,0 +1,26 @@
+databases:
+  # 示例：MySQL数据库
+  # - id: sales_db
+  #   name: 销售数据库
+  #   type: mysql
+  #   host: 192.168.1.10
+  #   port: 3306
+  #   database: sales
+  #   username: readonly_user
+  #   password: ${SALES_DB_PASSWORD}
+
+  # 示例：PostgreSQL数据库
+  # - id: finance_db
+  #   name: 财务数据库
+  #   type: postgresql
+  #   host: 192.168.1.20
+  #   port: 5432
+  #   database: finance
+  #   username: readonly_user
+  #   password: ${FINANCE_DB_PASSWORD}
+
+  # 本地SQLite测试库
+  - id: demo_db
+    name: 演示数据库
+    type: sqlite
+    database: ./data/demo.db
