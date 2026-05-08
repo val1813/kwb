@@ -309,6 +309,7 @@ class AuditLogger:
         success: bool,
         error: str = "",
         blocked_reason: str = "",
+        extra: dict | None = None,
     ):
         """记录一次查询操作
 
@@ -321,6 +322,7 @@ class AuditLogger:
             success: 是否成功
             error: 错误信息
             blocked_reason: 被拦截的原因（权限/频率/SQL审查等）
+            extra: 附加信息（trace_id、retry_count等）
         """
         record = {
             "timestamp": datetime.now().isoformat(),
@@ -333,6 +335,8 @@ class AuditLogger:
             "error": error,
             "blocked_reason": blocked_reason,
         }
+        if extra:
+            record.update(extra)
 
         log_file = self._get_log_file()
         with self._lock:

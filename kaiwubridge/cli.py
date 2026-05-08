@@ -144,6 +144,15 @@ def scan(
             cards = asyncio.run(_generate())
             console.print(f"  [green]已生成 {len(cards)} 张语义名片[/green]")
 
+    # 扫描完成后检测跨库同名冲突
+    if len(target_dbs) > 1:
+        console.print("\n[bold]检测跨库字段冲突...[/bold]")
+        conflicts = scanner.detect_name_conflicts(db_manager, metadata)
+        high = [c for c in conflicts if c["severity"] == "high"]
+        console.print(f"  发现 {len(conflicts)} 个冲突，其中高风险 {len(high)} 个")
+        if high:
+            console.print("  [yellow]请登录管理界面确认冲突（kwb serve → /admin/）[/yellow]")
+
     db_manager.close_all()
     metadata.close()
     console.print("\n[bold green]扫描完成[/bold green]")

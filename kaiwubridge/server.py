@@ -210,8 +210,8 @@ def create_app(config: AppConfig) -> FastAPI:
         # ---- 第6关：如果包含SQL，审查并执行 ----
         sql = _extract_sql(llm_response)
         if sql:
-            # 推断目标数据库
-            target_db = _infer_target_db(sql, visible_tables)
+            # 推断目标数据库（优先用schema linking缩小后的表集合）
+            target_db = _infer_target_db(sql, visible_tables, final_tables)
             if not target_db:
                 return _build_response(
                     f"无法确定查询目标数据库。LLM回答：\n\n{llm_response}",
@@ -320,6 +320,12 @@ def _build_schema_description(tables: list[TableInfo], metadata: MetadataStore) 
                         desc += f" 注：{card.notes}"
                 else:
                     desc = f"- {col.name}: {col.type}"
+
+                # 注入冲突warning（治理层同名冲突标注）
+                field_id = f"{db_id}.{table.table_name}.{col.name}"
+                for w in metadata.get_warnings_for_field(field_id):
+                    desc += f"\n  ⚠️ {w}"
+
                 parts.append(desc)
 
     return "\n".join(parts)
@@ -357,21 +363,36 @@ def _extract_sql(response: str) -> str | None:
     return None
 
 
-def _infer_target_db(sql: str, visible_tables: list[TableInfo]) -> str | None:
+def _infer_target_db(sql: str, visible_tables: list[TableInfo], final_tables: list[TableInfo] | None = None) -> str | None:
     """从SQL中推断目标数据库
 
     策略：
-    1. 提取SQL中的表名，匹配到已知表所属的数据库
-    2. 如果只有一个数据库可见，直接使用
+    1. 优先从final_tables（schema linking缩小后的表集合）推断
+    2. 回退到visible_tables全量匹配
+    3. 如果只有一个数据库可见，直接使用
     """
     sql_upper = sql.upper()
-    for table in visible_tables:
+
+    # 优先用schema linking结果（更精准，歧义少）
+    candidates = final_tables if final_tables else visible_tables
+    for table in candidates:
         if table.table_name.upper() in sql_upper:
             return table.db_id
-    # 只有一个数据库可见时直接使用
-    db_ids = list(set(t.db_id for t in visible_tables))
+
+    # 如果linked只有一个库，直接用
+    db_ids = list(set(t.db_id for t in candidates))
     if len(db_ids) == 1:
         return db_ids[0]
+
+    # 回退到全量visible_tables
+    if final_tables:
+        for table in visible_tables:
+            if table.table_name.upper() in sql_upper:
+                return table.db_id
+        db_ids = list(set(t.db_id for t in visible_tables))
+        if len(db_ids) == 1:
+            return db_ids[0]
+
     return None
 
 

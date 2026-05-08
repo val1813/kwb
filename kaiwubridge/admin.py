@@ -105,9 +105,16 @@ async def scan_database(db_id: str, request: Request):
         # 保存扫描结果
         for table in tables:
             metadata.save_table_info(table)
+
+        # 重建schema图（确保路由层使用最新的表和外键关系）
+        from .schema_graph import build_schema_graph
+        app.state.schema_graph = build_schema_graph(
+            db_manager, metadata, app.state.mapping_store
+        )
+
         return {
             "success": True,
-            "message": f"扫描完成，共发现 {len(tables)} 张表",
+            "message": f"扫描完成，共发现 {len(tables)} 张表，schema图已重建",
             "table_count": len(tables),
         }
     except Exception as e:
