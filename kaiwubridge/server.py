@@ -136,7 +136,7 @@ def create_app(config: AppConfig) -> FastAPI:
         # ---- 第3关：加载schema + 权限过滤 ----
         all_tables = metadata.get_all_tables()
         if not all_tables:
-            return _build_response("系统尚未扫描任何数据库，请先执行 kaiwu scan", config.llm.model)
+            return _build_response("系统尚未扫描任何数据库，请先执行 kwb scan", config.llm.model)
 
         # 权限过滤：移除不可见的表和字段（LLM永远看不到被禁止的内容）
         visible_tables = permissions.filter_schema(all_tables, role_id)

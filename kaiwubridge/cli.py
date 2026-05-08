@@ -1,4 +1,4 @@
-"""CLI命令行工具：kaiwu init/serve/scan/status/token"""
+"""CLI命令行工具：kwb init/serve/scan/status/token"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-app = typer.Typer(help="开物数据中间层 - 企业多源数据库与LLM智能中间层")
+app = typer.Typer(help="KaiwuBridge - 企业多源数据库与LLM智能中间层")
 console = Console()
 
 
@@ -50,7 +50,7 @@ def init(
     data_dir = Path("./data")
     data_dir.mkdir(parents=True, exist_ok=True)
     console.print(f"[green]数据目录已就绪: {data_dir}[/green]")
-    console.print("\n初始化完成，请编辑配置文件后执行 [bold]kaiwu scan[/bold] 扫描数据库")
+    console.print("\n初始化完成，请编辑配置文件后执行 [bold]kwb scan[/bold] 扫描数据库")
 
 
 @app.command()
